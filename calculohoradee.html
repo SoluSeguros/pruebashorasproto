@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Nómina por horas (salida tipo Excel)</title>
+<!-- CDN más confiable para XLSX -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1220; --card:#111a2e; --muted:#9fb0d0; --text:#eaf0ff;
+    --line:#223055; --accent:#4aa3ff; --ok:#22c55e; --warn:#f59e0b;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#071022,#0b1220);color:var(--text);
+       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1200px;margin:24px auto;padding:0 14px}
+  .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+  .card{background:rgba(17,26,46,.92);border:1px solid var(--line);border-radius:var(--radius);
+        padding:14px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+  h1{margin:0 0 10px;font-size:18px}
+  h2{margin:0 0 10px;font-size:14px;color:var(--muted);font-weight:600}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+  input,select,textarea{
+    width:100%;padding:10px 11px;border-radius:12px;border:1px solid var(--line);
+    background:#0b1430;color:var(--text);outline:none
+  }
+  textarea{min-height:170px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  button{
+    border:0;border-radius:12px;padding:10px 12px;font-weight:700;
+    background:var(--accent);color:#061024;cursor:pointer
+  }
+  button.secondary{background:#223055;color:var(--text);border:1px solid var(--line)}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;
+        border:1px solid var(--line);background:#0b1430;color:var(--muted);font-size:12px}
+  .small{font-size:12px;color:var(--muted);line-height:1.45}
+  .ok{color:var(--ok)}
+  .warn{color:var(--warn)}
+  table{width:100%;border-collapse:collapse;overflow:auto}
+  th,td{border-bottom:1px solid var(--line);padding:8px 8px;font-size:12px;white-space:nowrap}
+  th{color:var(--muted);text-align:left;background:rgba(34,48,85,.35);position:sticky;top:0}
+  .tableWrap{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" style="margin-bottom:14px">
+    <h1>Nómina por horas – salida tipo Excel (por concepto)</h1>
+    <div class="small">
+      Pegas tu tabla (Fecha / Entrada / Inter1 / Inter2 / Salida / Observaciones). El sistema crea filas por concepto y exporta a Excel.
+      <br><span class="warn">Nocturna:</span> desde <b>9:00 p. m.</b> hasta <b>6:00 a. m.</b> (configurable).
+      <br><span class="ok">Nuevo:</span> Soporte para observaciones (COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.)
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Entrada -->
+    <div class="card">
+      <h2>1) Datos y tabla</h2>
+
+      <div class="row">
+        <div>
+          <label>Nombre completo</label>
+          <input id="nombre" value="AROCHA CERVEN MIRIAM JOSEFINA"/>
+        </div>
+        <div>
+          <label>Empresa</label>
+          <input id="empresa" value="RESTAURANTE CAPITULO"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Puesto</label>
+          <input id="puesto" value="AUXILIAR"/>
+        </div>
+        <div>
+          <label>Salario mensual (opcional)</label>
+          <input id="salario" placeholder="1423500" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Valor hora</label>
+          <input id="valorHora" value="6470"/>
+        </div>
+        <div>
+          <label>Auxilio transporte diario</label>
+          <input id="auxTrans" value="6667"/>
+        </div>
+      </div>
+
+      <div class="row3">
+        <div>
+          <label>Jornada normal (horas/día)</label>
+          <input id="jornada" value="8"/>
+        </div>
+        <div>
+          <label>Hora inicio nocturna</label>
+          <input id="iniNoct" value="21:00"/>
+        </div>
+        <div>
+          <label>Hora fin nocturna</label>
+          <input id="finNoct" value="06:00"/>
+        </div>
+      </div>
+
+      <label>Tabla (pegar desde Excel). Formato esperado:</label>
+      <div class="pill">FECHA | ENTRADA | INTER 1 | INTER 2 | SALIDA | OBSERVACIONES</div>
+      <textarea id="tabla" spellcheck="false">FECHA	HORA DE ENTRADA	HORA INTER 1	HORA INTER 2	HORA DE SALIDA	OBSERVACIONES
+1-nov-25	01:58 PM	05:59 PM	06:59 PM	12:11 AM	
+2-nov-25	01:30 PM	06:02 PM	07:00 PM	11:11 PM	
+3-nov-25	01:19 PM	05:01 PM	06:19 PM	09:41 PM	
+4-nov-25					COMPENSATORIO
+5-nov-25					DIA DE LA FAMILIA
+6-nov-25	03:00 PM	04:35 PM	06:31 PM	10:21 PM	
+7-nov-25	09:57 AM	12:58 PM	04:59 PM	12:19 AM	
+8-nov-25	02:00 PM	06:00 PM	06:59 PM	01:03 AM	
+9-nov-25	01:21 PM	05:04 PM	06:18 PM	10:06 PM	
+10-nov-25					COMPENSATORIO
+11-nov-25	02:59 PM	04:58 PM	06:58 PM	11:03 PM	
+12-nov-25	02:59 PM	04:37 PM	06:45 PM	10:55 PM	
+13-nov-25	02:59 PM	04:58 PM	06:57 PM	11:24 PM	
+14-nov-25	01:57 PM	05:59 PM	06:59 PM	12:03 AM	
+15-nov-25	01:58 PM	06:00 PM	06:58 PM	12:30 AM</textarea>
+
+      <div class="btns">
+        <button id="btnCalc">Calcular</button>
+        <button class="secondary" id="btnXlsx">Exportar Excel</button>
+        <button class="secondary" id="btnCSV">Exportar CSV</button>
+        <button class="secondary" id="btnClear">Limpiar resultado</button>
+      </div>
+      <div class="small" style="margin-top:10px">
+        <span class="ok">✔</span> Soporta días con 2 tramos (descanso) o solo entrada/salida.
+        <br><span class="ok">✔</span> Cruce de medianoche (salidas tipo 12:11 AM) lo toma como día siguiente.
+        <br><span class="ok">✔</span> Auxilio transporte se distribuye proporcionalmente por horas trabajadas.
+        <br><span class="ok">✔</span> <b>Nuevo:</b> Procesa OBSERVACIONES: COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.
+      </div>
+    </div>
+
+    <!-- Parámetros -->
+    <div class="card">
+      <h2>2) Parámetros de conceptos (configurables)</h2>
+
+      <div class="small">
+        Estos factores definen el pago por concepto. Se aplican al <b>valor hora</b>.
+        <br>Ejemplo: Recargo nocturno = 0.35 (35% adicional).
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Recargo nocturno (adicional)</label>
+          <input id="f_noct" value="0.35"/>
+        </div>
+        <div>
+          <label>Extra diurna (adicional)</label>
+          <input id="f_exd" value="0.25"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Extra nocturna (adicional)</label>
+          <input id="f_exn" value="0.75"/>
+        </div>
+        <div>
+          <label>Dominical/Festivo diurno (adicional)</label>
+          <input id="f_fest_d" value="0.75"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Dominical/Festivo nocturno (adicional)</label>
+          <input id="f_fest_n" value="1.10"/>
+        </div>
+        <div>
+          <label>Comisión % (sobre Total)</label>
+          <input id="comision" value="0"/>
+        </div>
+      </div>
+
+      <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+
+      <h2>3) Seguridad social y prestaciones (opcional)</h2>
+      <div class="small">
+        Si lo activas, calcula costos por concepto usando % típicos (puedes cambiarlos).
+        <br><b>Nota:</b> el Auxilio de transporte normalmente <b>no</b> entra como IBC.
+      </div>
+
+      <div class="row">
+        <div>
+          <label><input type="checkbox" id="chkSS" checked> Calcular Seguridad Social</label>
+        </div>
+        <div>
+          <label><input type="checkbox" id="chkPrest" checked> Calcular Prestaciones</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>EPS % (empleador)</label>
+          <input id="p_eps" value="0.085"/>
+        </div>
+        <div>
+          <label>AFP % (empleador)</label>
+          <input id="p_afp" value="0.12"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>ARL %</label>
+          <input id="p_arl" value="0.00522"/>
+        </div>
+        <div>
+          <label>CAJA %</label>
+          <input id="p_caja" value="0.04"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Cesantías %</label>
+          <input id="p_ces" value="0.0833"/>
+        </div>
+        <div>
+          <label>Primas %</label>
+          <input id="p_pri" value="0.0833"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Intereses %</label>
+          <input id="p_int" value="0.01"/>
+        </div>
+        <div>
+          <label>Vacaciones %</label>
+          <input id="p_vac" value="0.0417"/>
+        </div>
+      </div>
+
+      <div class="small" style="margin-top:10px">
+        Si tus porcentajes en Excel son distintos, los cambias aquí y te queda igual.
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultado -->
+  <div class="card" style="margin-top:14px">
+    <h2>Resultado (vista previa)</h2>
+    <div class="tableWrap">
+      <table id="preview">
+        <thead><tr id="headRow"></tr></thead>
+        <tbody id="bodyRows"></tbody>
+      </table>
+    </div>
+    <div class="small" style="margin-top:10px">
+      <b>Exporta Excel</b> para tenerlo con todas las columnas como plantilla.
+    </div>
+  </div>
+</div>
+
+<script>
+// =========================
+// VERIFICACIÓN DE LIBRERÍAS
+// =========================
+function checkXLSXLoaded() {
+  if (typeof XLSX === 'undefined') {
+    console.error('XLSX no está cargado. Usando modo CSV.');
+    return false;
+  }
+  return true;
+}
+
+// =========================
+// Utilidades de tiempo
+// =========================
+function parseDateFlexible(s){
+  if(!s) return null;
+  s = String(s).trim();
+  const m = s.match(/^(\d{1,2})-([a-zA-ZñÑ]{3})-(\d{2}|\d{4})$/);
+  if(m){
+    const dd = parseInt(m[1],10);
+    const mon = m[2].toLowerCase();
+    const yy = m[3].length===2 ? (2000+parseInt(m[3],10)) : parseInt(m[3],10);
+    const map = {ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,oct:9,nov:10,dic:11};
+    if(map[mon]===undefined) return null;
+    return new Date(yy, map[mon], dd);
+  }
+  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m2){
+    return new Date(parseInt(m2[3],10), parseInt(m2[2],10)-1, parseInt(m2[1],10));
+  }
+  const m3 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m3){
+    return new Date(parseInt(m3[1],10), parseInt(m3[2],10)-1, parseInt(m3[3],10));
+  }
+  return null;
+}
+
+function parseTime12or24(s){
+  if(!s) return null;
+  s = String(s).trim();
+  if(!s) return null;
+  let m = s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if(m){
+    let hh = parseInt(m[1],10);
+    const mm = parseInt(m[2],10);
+    const ap = m[3].toUpperCase();
+    if(hh===12) hh=0;
+    if(ap==='PM') hh += 12;
+    return {h:hh, m:mm};
+  }
+  m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if(m){
+    return {h:parseInt(m[1],10), m:parseInt(m[2],10)};
+  }
+  return null;
+}
+
+function toDateTime(d, t){
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), t.h, t.m, 0, 0);
+}
+
+function minutesBetween(a,b){
+  return Math.max(0, Math.round((b - a) / 60000));
+}
+
+function dayNameES(d){
+  const arr = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  return arr[d.getDay()];
+}
+
+function fmtCOP(n){
+  return (Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function hhmmToMin(s){
+  const [h,m]=s.split(":").map(x=>parseInt(x,10));
+  return h*60+m;
+}
+
+// =========================
+// Franjas 7-25 (7am a 1am)
+// =========================
+const SLOT_START = 7;
+const SLOT_END   = 25;
+function slotLabels(){
+  const labels=[];
+  for(let h=SLOT_START; h<SLOT_END; h++){
+    labels.push(`${h}-${h+1}`);
+  }
+  return labels;
+}
+
+function slotIndexForMinute(minFromDayStart){
+  const base = SLOT_START*60;
+  const idx = Math.floor((minFromDayStart - base)/60);
+  if(idx<0 || idx>= (SLOT_END-SLOT_START)) return -1;
+  return idx;
+}
+
+// =========================
+// Clasificación diurna/nocturna
+// =========================
+function isNocturna(minFromMid, iniNoctMin, finNoctMin){
+  const mod = ((minFromMid%1440)+1440)%1440;
+  if(iniNoctMin < finNoctMin){
+    return (mod>=iniNoctMin && mod<finNoctMin);
+  }
+  return (mod>=iniNoctMin || mod<finNoctMin);
+}
+
+// =========================
+// LÓGICA DE OBSERVACIONES - REGLAS ESPECÍFICAS
+// =========================
+function getObservationRules(observacion) {
+  const obs = (observacion || "").trim().toUpperCase();
+  
+  if (obs.includes("COMPENSATORIO")) {
+    return {
+      tipo: "COMPENSATORIO",
+      pagoBasico: true,
+      pagoAuxilio: true,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 8, // Día completo
+      calcularTodo: true
+    };
+  }
+  
+  if (obs.includes("INCAPACIDAD")) {
+    return {
+      tipo: "INCAPACIDAD",
+      pagoBasico: true,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 8, // Asume jornada completa
+      calcularTodo: true
+    };
+  }
+  
+  if (obs.includes("DIA DE LA FAMILIA") || obs.includes("FESTIVO")) {
+    return {
+      tipo: "DIA_FESTIVO",
+      pagoBasico: true,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 8, // Día festivo pagado
+      calcularTodo: true
+    };
+  }
+  
+  if (obs.includes("FALTA INJUSTIFICADA")) {
+    return {
+      tipo: "FALTA_INJUSTIFICADA",
+      pagoBasico: false,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 0,
+      calcularTodo: false // No calcular nada
+    };
+  }
+  
+  if (obs.includes("EMPLEADO DEL MES")) {
+    return {
+      tipo: "EMPLEADO_MES",
+      pagoBasico: true,
+      pagoAuxilio: true,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 8,
+      calcularTodo: true
+    };
+  }
+  
+  if (obs.includes("LICENCIA NO REMUNERADA")) {
+    return {
+      tipo: "LICENCIA_NO_REMUNERADA",
+      pagoBasico: false,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 0,
+      calcularTodo: false // No calcular nada
+    };
+  }
+  
+  // Si no hay observación o no coincide con ninguna regla especial
+  return {
+    tipo: "NORMAL",
+    pagoBasico: true,
+    pagoAuxilio: true,
+    pagoExtras: true,
+    pagoRecargos: true,
+    horasNormales: null, // Se calculará según horario real
+    calcularTodo: true
+  };
+}
+
+// =========================
+// Cálculo por día -> filas por concepto (MODIFICADO PARA OBSERVACIONES)
+// =========================
+function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct}, day){
+  const d = day.date;
+  const dia = dayNameES(d);
+  const observacion = day.observacion || "";
+  const rules = getObservationRules(observacion);
+  
+  // Si no se debe calcular nada (FALTA INJUSTIFICADA, LICENCIA NO REMUNERADA)
+  if (!rules.calcularTodo) {
+    return []; // Retorna array vacío, no genera filas
+  }
+  
+  const intervals = [];
+  let totalHoras = 0;
+  
+  // Si es un día con reglas especiales (COMPENSATORIO, INCAPACIDAD, etc.)
+  if (rules.horasNormales !== null) {
+    // Días especiales: usar horasNormales definidas en las reglas
+    totalHoras = rules.horasNormales;
+    
+    // Para estos días especiales, generamos distribución proporcional de horas
+    // Asignamos todas las horas a la franja 7-8 (o una franja representativa)
+    const nSlots = SLOT_END - SLOT_START;
+    const basicSlots = Array(nSlots).fill(0);
+    const auxSlots = Array(nSlots).fill(0);
+    
+    if (rules.pagoBasico) {
+      // Distribuir horas normales proporcionalmente
+      const horasPorFranja = rules.horasNormales / nSlots;
+      for (let i = 0; i < nSlots; i++) {
+        basicSlots[i] = horasPorFranja;
+        if (rules.pagoAuxilio) {
+          auxSlots[i] = horasPorFranja;
+        }
+      }
+    }
+    
+    // Construir filas según reglas
+    const rows = [];
+    if (rules.pagoBasico && totalHoras > 0) {
+      rows.push(buildRowSpecial({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, 
+        d, dia, observacion, rules, comisionPct, ss, prest,
+        concepto: "Básico",
+        slotHours: basicSlots,
+        incluirAuxilio: false,
+        esBasico: true
+      }));
+    }
+    
+    if (rules.pagoAuxilio && auxTrans > 0 && totalHoras > 0) {
+      rows.push(buildRowSpecial({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, 
+        d, dia, observacion, rules, comisionPct, ss, prest,
+        concepto: "Auxilio de Transporte",
+        slotHours: auxSlots,
+        incluirAuxilio: true,
+        esBasico: false
+      }));
+    }
+    
+    return rows;
+  }
+  
+  // DÍA NORMAL (sin observaciones especiales) - Cálculo original
+  const tIn  = parseTime12or24(day.entry);
+  const tI1  = parseTime12or24(day.inter1);
+  const tI2  = parseTime12or24(day.inter2);
+  const tOut = parseTime12or24(day.exit);
+
+  if(!tIn || !tOut) return [];
+  if(tI1 && tI2){
+    const a1 = toDateTime(d, tIn);
+    const b1 = toDateTime(d, tI1);
+    const a2 = toDateTime(d, tI2);
+    let b2 = toDateTime(d, tOut);
+    if(b2 < a2) b2 = new Date(b2.getTime() + 24*60*60000);
+    let bb1=b1; if(bb1<a1) bb1 = new Date(bb1.getTime()+24*60*60000);
+    intervals.push([a1, bb1]);
+    intervals.push([a2, b2]);
+  } else {
+    const a = toDateTime(d, tIn);
+    let b = toDateTime(d, tOut);
+    if(b < a) b = new Date(b.getTime() + 24*60*60000);
+    intervals.push([a,b]);
+  }
+
+  let totalMin = 0;
+  for(const [a,b] of intervals) totalMin += minutesBetween(a,b);
+  totalHoras = totalMin/60;
+
+  const iniNoctMin = hhmmToMin(iniNoct);
+  const finNoctMin = hhmmToMin(finNoct);
+  const labels = slotLabels();
+  const nSlots = labels.length;
+
+  const esDomingo = (d.getDay()===0);
+  const festivo = esDomingo;
+
+  const workedMinutes = [];
+  for(const [a,b] of intervals){
+    let t = new Date(a);
+    while(t < b){
+      workedMinutes.push(new Date(t));
+      t.setMinutes(t.getMinutes()+1);
+    }
+  }
+
+  workedMinutes.sort((x,y)=>x-y);
+  const ordLimitMin = Math.round(parseFloat(jornada)*60);
+  const ordMinutes = workedMinutes.slice(0, ordLimitMin);
+  const extraMinutes = workedMinutes.slice(ordLimitMin);
+
+  function addMinuteToSlots(arr, dt){
+    const baseDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+    let minFromMid = (dt - baseDay)/60000;
+    if(minFromMid<0) minFromMid += 1440;
+    if(dt.getDate()!==d.getDate() || dt.getMonth()!==d.getMonth() || dt.getFullYear()!==d.getFullYear()){
+      minFromMid += 1440;
+    }
+    const idx = slotIndexForMinute(minFromMid);
+    if(idx>=0) arr[idx] += 1/60;
+  }
+
+  const basicSlots = Array(nSlots).fill(0);
+  const auxSlots   = Array(nSlots).fill(0);
+  const noctRecSlots = Array(nSlots).fill(0);
+  const exdSlots = Array(nSlots).fill(0);
+  const exnSlots = Array(nSlots).fill(0);
+  const festDiurnoSlots = Array(nSlots).fill(0);
+  const festNoctSlots   = Array(nSlots).fill(0);
+
+  function isNoctDT(dt){
+    const baseDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+    let minFromMid = (dt - baseDay)/60000;
+    if(dt.getDate()!==d.getDate() || dt.getMonth()!==d.getMonth() || dt.getFullYear()!==d.getFullYear()){
+      minFromMid += 1440;
+    }
+    return isNocturna(minFromMid, iniNoctMin, finNoctMin);
+  }
+
+  // Contar minutos trabajados en cada franja (para auxilio - TODAS las horas)
+  const allWorkedMinutes = ordMinutes.concat(extraMinutes);
+  for(const dt of allWorkedMinutes){
+    addMinuteToSlots(auxSlots, dt);
+  }
+
+  for(const dt of ordMinutes){
+    addMinuteToSlots(basicSlots, dt);
+    if(isNoctDT(dt)) addMinuteToSlots(noctRecSlots, dt);
+  }
+
+  for(const dt of extraMinutes){
+    const noct = isNoctDT(dt);
+    if(festivo){
+      if(noct) addMinuteToSlots(festNoctSlots, dt);
+      else     addMinuteToSlots(festDiurnoSlots, dt);
+    } else {
+      if(noct) addMinuteToSlots(exnSlots, dt);
+      else     addMinuteToSlots(exdSlots, dt);
+    }
+  }
+
+  const noAux = false;
+  const auxValue = (!noAux && totalMin>0) ? parseFloat(auxTrans||0) : 0;
+
+  // Función auxiliar para construir filas especiales (días con observaciones)
+  function buildRowSpecial(params){
+    const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
+           comisionPct, ss, prest, concepto, slotHours, incluirAuxilio, esBasico} = params;
+    
+    const vh = parseFloat(valorHora||0);
+    const labels = slotLabels();
+    const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
+    let totalPorConcepto = 0;
+    const vlrSlots = [];
+
+    if (incluirAuxilio) {
+      // Para Auxilio de Transporte: distribución proporcional
+      for (let i = 0; i < slotHours.length; i++) {
+        const horasInSlot = slotHours[i];
+        if (totalHorasConcepto === 0) {
+          vlrSlots.push(0);
+        } else {
+          vlrSlots.push((horasInSlot / totalHorasConcepto) * auxTrans);
+        }
+      }
+      totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+    } else if (esBasico) {
+      // Para Básico: valor hora normal
+      for (let i = 0; i < slotHours.length; i++) {
+        vlrSlots.push(slotHours[i] * vh);
+      }
+      totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+    }
+
+    const row = {};
+    row["Nombre completo"] = nombre;
+    row["Empresa"] = empresa;
+    row["Puesto"] = puesto;
+    row[" Salario "] = salario ? salario : "";
+    row["Valor Hora"] = vh;
+    row["Fecha"] = formatDateES(d);
+    row["dia"] = dia;
+    row["Concepto"] = concepto;
+    row["Observación"] = observacion;
+    row["Tipo Observación"] = rules.tipo;
+
+    labels.forEach((lab,i) => row[lab] = round3(slotHours[i] || 0));
+    row["Total Horas"] = round3(totalHorasConcepto);
+
+    labels.forEach((lab,i) => row["vlr "+lab.replace("-","-")] = fmtMoney(vlrSlots[i] || 0));
+    row["Total por concepto"] = fmtMoney(totalPorConcepto);
+
+    // Seguridad Social y Prestaciones
+    const ibc = esBasico ? totalPorConcepto : 0;
+    
+    const calcSS = ss.enabled && esBasico ? {
+      valor_diario: 0,
+      eps: ibc * ss.eps,
+      afp: ibc * ss.afp,
+      arl: ibc * ss.arl,
+      caja: ibc * ss.caja
+    } : {valor_diario:0, eps:0, afp:0, arl:0, caja:0};
+
+    const totalSS = (calcSS.eps + calcSS.afp + calcSS.arl + calcSS.caja);
+
+    const calcPrest = prest.enabled && esBasico ? {
+      ces: ibc * prest.ces,
+      pri: ibc * prest.pri,
+      inte: ibc * prest.inte,
+      vac: ibc * prest.vac
+    } : {ces:0, pri:0, inte:0, vac:0};
+
+    const totalPrest = (calcPrest.ces + calcPrest.pri + calcPrest.inte + calcPrest.vac);
+
+    const total = totalPorConcepto + totalSS + totalPrest;
+    const valCom = total * comisionPct;
+    const valTotal = total + valCom;
+
+    row["Valor diario de seguridad social"] = fmtMoney(calcSS.valor_diario || 0);
+    row["EPS"] = fmtMoney(calcSS.eps || 0);
+    row["AFP"] = fmtMoney(calcSS.afp || 0);
+    row["ARL"] = fmtMoney(calcSS.arl || 0);
+    row["CAJA"] = fmtMoney(calcSS.caja || 0);
+    row["Total Seguridad Social"] = fmtMoney(totalSS);
+
+    row["CESANTIAS"] = fmtMoney(calcPrest.ces || 0);
+    row["PRIMAS"] = fmtMoney(calcPrest.pri || 0);
+    row["INTERES"] = fmtMoney(calcPrest.inte || 0);
+    row["VACACIONES"] = fmtMoney(calcPrest.vac || 0);
+    row["Total Prestaciones Sociales"] = fmtMoney(totalPrest);
+
+    row["Total"] = fmtMoney(total);
+    row["Valor Comisión"] = fmtMoney(valCom);
+    row["Valor Total"] = fmtMoney(valTotal);
+    row["Observaciones"] = `Día ${rules.tipo} - ${observacion}`;
+
+    return row;
+  }
+
+  // Función original para días normales
+  function buildRow(concepto, slotHours, factorAdicional, baseIncluida){
+    const vh = parseFloat(valorHora||0);
+    const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
+    let totalPorConcepto = 0;
+
+    if(concepto==="Auxilio de Transporte"){
+      const vlrSlots = slotHours.map(hoursInSlot => {
+        if(totalHorasConcepto === 0) return 0;
+        return (hoursInSlot / totalHorasConcepto) * auxValue;
+      });
+      totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+      
+      const row = {};
+      row["Nombre completo"]=nombre;
+      row["Empresa"]=empresa;
+      row["Puesto"]=puesto;
+      row[" Salario "]=salario? salario : "";
+      row["Valor Hora"]=vh;
+      row["Fecha"]=formatDateES(d);
+      row["dia"]=dia;
+      row["Concepto"]=concepto;
+      row["Observación"]=observacion;
+      row["Tipo Observación"]=rules.tipo;
+      row["No auxilio de transporte"]= noAux ? 1 : "";
+
+      labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
+      row["Total Horas"]=round3(totalHorasConcepto);
+
+      labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlots[i]||0));
+      row["Total por concepto"]=fmtMoney(totalPorConcepto);
+
+      row["Valor diario de seguridad social"]=0;
+      row["EPS"]=0;
+      row["AFP"]=0;
+      row["ARL"]=0;
+      row["CAJA"]=0;
+      row["Total Seguridad Social"]=0;
+
+      row["CESANTIAS"]=0;
+      row["PRIMAS"]=0;
+      row["INTERES"]=0;
+      row["VACACIONES"]=0;
+      row["Total Prestaciones Sociales"]=0;
+
+      row["Total"]=fmtMoney(totalPorConcepto);
+      row["Valor Comisión"]=fmtMoney(totalPorConcepto * comisionPct);
+      row["Valor Total"]=fmtMoney(totalPorConcepto + (totalPorConcepto * comisionPct));
+      row["Observaciones"]="Auxilio proporcional a horas trabajadas";
+
+      return row;
+    }
+
+    const vlrSlots = slotHours.map(h=>{
+      if(h<=0) return 0;
+      let mult;
+      if(concepto==="Básico"){
+        mult = 1.0;
+      } else {
+        mult = baseIncluida ? (1.0 + factorAdicional) : factorAdicional;
+      }
+      return h * vh * mult;
+    });
+    totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+
+    const aplicaIBC = true;
+    const ibc = totalPorConcepto;
+
+    const calcSS = ss.enabled ? {
+      valor_diario: 0,
+      eps: ibc*ss.eps,
+      afp: ibc*ss.afp,
+      arl: ibc*ss.arl,
+      caja: ibc*ss.caja
+    } : {valor_diario:0,eps:0,afp:0,arl:0,caja:0};
+
+    const totalSS = (calcSS.eps+calcSS.afp+calcSS.arl+calcSS.caja);
+
+    const calcPrest = prest.enabled ? {
+      ces: ibc*prest.ces,
+      pri: ibc*prest.pri,
+      inte: ibc*prest.inte,
+      vac: ibc*prest.vac
+    } : {ces:0,pri:0,inte:0,vac:0};
+
+    const totalPrest = (calcPrest.ces+calcPrest.pri+calcPrest.inte+calcPrest.vac);
+
+    const total = totalPorConcepto + totalSS + totalPrest;
+    const valCom = total * comisionPct;
+    const valTotal = total + valCom;
+
+    const row = {};
+    row["Nombre completo"]=nombre;
+    row["Empresa"]=empresa;
+    row["Puesto"]=puesto;
+    row[" Salario "]=salario? salario : "";
+    row["Valor Hora"]=vh;
+    row["Fecha"]=formatDateES(d);
+    row["dia"]=dia;
+    row["Concepto"]=concepto;
+    row["Observación"]=observacion;
+    row["Tipo Observación"]=rules.tipo;
+    row["No auxilio de transporte"]= noAux ? 1 : "";
+
+    labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
+    row["Total Horas"]=round3(totalHorasConcepto);
+
+    labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlots[i]||0));
+    row["Total por concepto"]=fmtMoney(totalPorConcepto);
+
+    row["Valor diario de seguridad social"]=fmtMoney(calcSS.valor_diario||0);
+    row["EPS"]=fmtMoney(calcSS.eps||0);
+    row["AFP"]=fmtMoney(calcSS.afp||0);
+    row["ARL"]=fmtMoney(calcSS.arl||0);
+    row["CAJA"]=fmtMoney(calcSS.caja||0);
+    row["Total Seguridad Social"]=fmtMoney(totalSS);
+
+    row["CESANTIAS"]=fmtMoney(calcPrest.ces||0);
+    row["PRIMAS"]=fmtMoney(calcPrest.pri||0);
+    row["INTERES"]=fmtMoney(calcPrest.inte||0);
+    row["VACACIONES"]=fmtMoney(calcPrest.vac||0);
+    row["Total Prestaciones Sociales"]=fmtMoney(totalPrest);
+
+    row["Total"]=fmtMoney(total);
+    row["Valor Comisión"]=fmtMoney(valCom);
+    row["Valor Total"]=fmtMoney(valTotal);
+    row["Observaciones"]="";
+
+    return row;
+  }
+
+  // Si hay observación pero no es una regla especial que ya procesamos
+  if (observacion && rules.tipo !== "NORMAL") {
+    // Ya procesamos las reglas especiales arriba, así que retornamos vacío
+    return [];
+  }
+
+  // Para días normales (sin observaciones especiales)
+  const rows = [];
+  if(sumArr(basicSlots)>0) rows.push(buildRow("Básico", basicSlots, 0, true));
+  
+  if(auxValue>0 && sumArr(auxSlots)>0) rows.push(buildRow("Auxilio de Transporte", auxSlots, 0, false));
+  
+  if(sumArr(noctRecSlots)>0) rows.push(buildRow("Recargo  Nocturno", noctRecSlots, factors.noct, false));
+
+  if(!festivo){
+    if(sumArr(exdSlots)>0) rows.push(buildRow("Hora Extras Diurna", exdSlots, (1.0+factors.exd), true));
+    if(sumArr(exnSlots)>0) rows.push(buildRow("Hora Extra Nocturna", exnSlots, (1.0+factors.exn), true));
+  } else {
+    if(sumArr(festDiurnoSlots)>0) rows.push(buildRow("Festivo Laborado Sin Compensar", festDiurnoSlots, (1.0+factors.fest_d), true));
+    if(sumArr(festNoctSlots)>0) rows.push(buildRow("Recargo Nocturno Festivo", festNoctSlots, (1.0+factors.fest_n), true));
+  }
+
+  return rows;
+}
+
+function sumArr(a){ return a.reduce((x,y)=>x+y,0); }
+function round3(n){ return Math.round(n*1000)/1000; }
+function fmtMoney(n){ return Math.round(n); }
+function formatDateES(d){
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+// =========================
+// Parsear tabla pegada (MODIFICADO PARA 6 COLUMNAS)
+// =========================
+function parsePastedTable(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const out=[];
+  for(const line of lines){
+    const cols = line.split(/\t| {2,}|;/).map(x=>x.trim());
+    if(cols.length<1) continue;
+    
+    // Saltar encabezados
+    if(/fecha/i.test(cols[0]) && /entrada/i.test(cols[1])) continue;
+
+    const d = parseDateFlexible(cols[0]);
+    if(!d) continue;
+    
+    out.push({
+      date: d,
+      entry: cols[1]||"",
+      inter1: cols[2]||"",
+      inter2: cols[3]||"",
+      exit: cols[4]||"",
+      observacion: cols[5]||"" // NUEVA COLUMNA
+    });
+  }
+  return out;
+}
+
+// =========================
+// Exportar a CSV
+// =========================
+function exportToCSV(rows, filename) {
+  if (!rows.length) return;
+  
+  const headers = Object.keys(rows[0]);
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        if (value === null || value === undefined) return '';
+        const stringValue = String(value);
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return '"' + stringValue.replace(/"/g, '""') + '"';
+        }
+        return stringValue;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// =========================
+// Exportar a Excel
+// =========================
+function exportToExcel(rows, filename) {
+  if (!checkXLSXLoaded()) {
+    alert('La librería de Excel no está disponible. Exportando como CSV en su lugar.');
+    exportToCSV(rows, filename.replace('.xlsx', '.csv'));
+    return;
+  }
+  
+  try {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "nomina");
+    XLSX.writeFile(wb, filename);
+  } catch (error) {
+    console.error('Error al exportar Excel:', error);
+    alert('Error al exportar Excel: ' + error.message + '\nExportando como CSV...');
+    exportToCSV(rows, filename.replace('.xlsx', '.csv'));
+  }
+}
+
+// =========================
+// Render tabla preview
+// =========================
+let OUTPUT_ROWS = [];
+
+function renderPreview(rows){
+  const head = document.getElementById("headRow");
+  const body = document.getElementById("bodyRows");
+  head.innerHTML = "";
+  body.innerHTML = "";
+
+  if(!rows.length){
+    head.innerHTML = "<th>Sin datos</th>";
+    return;
+  }
+  const cols = Object.keys(rows[0]);
+  cols.forEach(c=>{
+    const th = document.createElement("th");
+    th.textContent = c;
+    head.appendChild(th);
+  });
+
+  rows.slice(0,25).forEach(r=>{
+    const tr = document.createElement("tr");
+    cols.forEach(c=>{
+      const td = document.createElement("td");
+      td.textContent = r[c];
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+// =========================
+// Acciones principales
+// =========================
+document.getElementById("btnCalc").onclick = ()=>{
+  const nombre = document.getElementById("nombre").value.trim();
+  const empresa = document.getElementById("empresa").value.trim();
+  const puesto = document.getElementById("puesto").value.trim();
+  const salario = document.getElementById("salario").value.trim();
+  const valorHora = parseFloat(document.getElementById("valorHora").value||0);
+  const auxTrans = parseFloat(document.getElementById("auxTrans").value||0);
+  const jornada = parseFloat(document.getElementById("jornada").value||8);
+  const iniNoct = document.getElementById("iniNoct").value.trim() || "21:00";
+  const finNoct = document.getElementById("finNoct").value.trim() || "06:00";
+
+  const factors = {
+    noct: parseFloat(document.getElementById("f_noct").value||0.35),
+    exd:  parseFloat(document.getElementById("f_exd").value||0.25),
+    exn:  parseFloat(document.getElementById("f_exn").value||0.75),
+    fest_d: parseFloat(document.getElementById("f_fest_d").value||0.75),
+    fest_n: parseFloat(document.getElementById("f_fest_n").value||1.10),
+  };
+
+  const comisionPct = parseFloat(document.getElementById("comision").value||0)/100;
+
+  const ss = {
+    enabled: document.getElementById("chkSS").checked,
+    eps: parseFloat(document.getElementById("p_eps").value||0),
+    afp: parseFloat(document.getElementById("p_afp").value||0),
+    arl: parseFloat(document.getElementById("p_arl").value||0),
+    caja: parseFloat(document.getElementById("p_caja").value||0),
+  };
+
+  const prest = {
+    enabled: document.getElementById("chkPrest").checked,
+    ces: parseFloat(document.getElementById("p_ces").value||0),
+    pri: parseFloat(document.getElementById("p_pri").value||0),
+    inte: parseFloat(document.getElementById("p_int").value||0),
+    vac: parseFloat(document.getElementById("p_vac").value||0),
+  };
+
+  const days = parsePastedTable(document.getElementById("tabla").value);
+  const allRows = [];
+  for(const day of days){
+    const rows = calcDayRows({
+      nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct
+    }, day);
+    allRows.push(...rows);
+  }
+
+  allRows.sort((a,b)=>{
+    const da = a["Fecha"].split("/").reverse().join("-");
+    const db = b["Fecha"].split("/").reverse().join("-");
+    if(da<db) return -1;
+    if(da>db) return 1;
+    return (a["Concepto"]||"").localeCompare(b["Concepto"]||"");
+  });
+
+  OUTPUT_ROWS = allRows;
+  renderPreview(allRows);
+};
+
+document.getElementById("btnClear").onclick = ()=>{
+  OUTPUT_ROWS = [];
+  renderPreview([]);
+};
+
+document.getElementById("btnXlsx").onclick = ()=>{
+  if(!OUTPUT_ROWS.length){
+    alert("Primero calcula para generar el archivo.");
+    return;
+  }
+  exportToExcel(OUTPUT_ROWS, "nomina_por_horas.xlsx");
+};
+
+document.getElementById("btnCSV").onclick = ()=>{
+  if(!OUTPUT_ROWS.length){
+    alert("Primero calcula para generar el archivo.");
+    return;
+  }
+  exportToCSV(OUTPUT_ROWS, "nomina_por_horas.csv");
+};
+
+// Inicialización
+renderPreview([]);
+</script>
+</body>
+</html>
