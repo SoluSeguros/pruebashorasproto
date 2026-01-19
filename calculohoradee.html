@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Nómina por horas (salida tipo Excel)</title>
+<title>Nómina por horas (salida tipo Excel) - Jornada 7.33h</title>
 <!-- CDN más confiable para XLSX -->
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -49,10 +49,11 @@
 <body>
 <div class="wrap">
   <div class="card" style="margin-bottom:14px">
-    <h1>Nómina por horas – salida tipo Excel (por concepto)</h1>
+    <h1>Nómina por horas – salida tipo Excel (por concepto) - Jornada 7.33h</h1>
     <div class="small">
       Pegas tu tabla (Fecha / Entrada / Inter1 / Inter2 / Salida / Observaciones). El sistema crea filas por concepto y exporta a Excel.
       <br><span class="warn">Nocturna:</span> desde <b>9:00 p. m.</b> hasta <b>6:00 a. m.</b> (configurable).
+      <br><span class="ok">Jornada legal:</span> Máximo <b>7.33 horas diarias</b> según ley colombiana (44 horas semanales).
       <br><span class="ok">Nuevo:</span> Soporte para observaciones (COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.)
     </div>
   </div>
@@ -97,8 +98,9 @@
 
       <div class="row3">
         <div>
-          <label>Jornada normal (horas/día)</label>
-          <input id="jornada" value="8"/>
+          <label>Jornada pactada (horas/día)</label>
+          <input id="jornada" value="8" readonly style="background:#1a243f;color:var(--muted)"/>
+          <div class="small">Solo informativo. Límite legal es 7.33h</div>
         </div>
         <div>
           <label>Hora inicio nocturna</label>
@@ -107,6 +109,14 @@
         <div>
           <label>Hora fin nocturna</label>
           <input id="finNoct" value="06:00"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Jornada legal máxima (horas/día)</label>
+          <input id="jornadaLegal" value="7.33" readonly style="background:#0f1a33;color:var(--accent);font-weight:bold"/>
+          <div class="small">Según ley colombiana (44h semanales ÷ 6 días)</div>
         </div>
       </div>
 
@@ -136,10 +146,11 @@
         <button class="secondary" id="btnClear">Limpiar resultado</button>
       </div>
       <div class="small" style="margin-top:10px">
-        <span class="ok">✔</span> Soporta días con 2 tramos (descanso) o solo entrada/salida.
+        <span class="ok">✔</span> <b>JORNADA LEGAL 7.33h</b>: Horas extras se calculan después de 7.33 horas diarias.
+        <br><span class="ok">✔</span> Soporta días con 2 tramos (descanso) o solo entrada/salida.
         <br><span class="ok">✔</span> Cruce de medianoche (salidas tipo 12:11 AM) lo toma como día siguiente.
         <br><span class="ok">✔</span> Auxilio transporte se distribuye proporcionalmente por horas trabajadas.
-        <br><span class="ok">✔</span> <b>Nuevo:</b> Procesa OBSERVACIONES: COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.
+        <br><span class="ok">✔</span> Procesa OBSERVACIONES: COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.
       </div>
     </div>
 
@@ -263,6 +274,7 @@
     </div>
     <div class="small" style="margin-top:10px">
       <b>Exporta Excel</b> para tenerlo con todas las columnas como plantilla.
+      <br><b>Nota:</b> Horas extras se calculan después de 7.33 horas diarias (440 minutos).
     </div>
   </div>
 </div>
@@ -278,6 +290,13 @@ function checkXLSXLoaded() {
   }
   return true;
 }
+
+// =========================
+// Constantes de jornada legal
+// =========================
+const JORNADA_LEGAL_HORAS = 7.33;        // Horas máximas por día según ley
+const JORNADA_LEGAL_MINUTOS = 440;      // 7.33 * 60 = 439.8 ≈ 440 minutos
+const DIAS_SEMANA_LABORAL = 6;          // Días laborales por semana (para cálculo 44h/6días)
 
 // =========================
 // Utilidades de tiempo
@@ -391,7 +410,7 @@ function getObservationRules(observacion) {
       pagoAuxilio: true,
       pagoExtras: false,
       pagoRecargos: false,
-      horasNormales: 8, // Día completo
+      horasNormales: JORNADA_LEGAL_HORAS, // Día completo según jornada legal
       calcularTodo: true
     };
   }
@@ -403,7 +422,7 @@ function getObservationRules(observacion) {
       pagoAuxilio: false,
       pagoExtras: false,
       pagoRecargos: false,
-      horasNormales: 8, // Asume jornada completa
+      horasNormales: JORNADA_LEGAL_HORAS, // Asume jornada completa legal
       calcularTodo: true
     };
   }
@@ -415,7 +434,7 @@ function getObservationRules(observacion) {
       pagoAuxilio: false,
       pagoExtras: false,
       pagoRecargos: false,
-      horasNormales: 8, // Día festivo pagado
+      horasNormales: JORNADA_LEGAL_HORAS, // Día festivo pagado según jornada legal
       calcularTodo: true
     };
   }
@@ -439,7 +458,7 @@ function getObservationRules(observacion) {
       pagoAuxilio: true,
       pagoExtras: false,
       pagoRecargos: false,
-      horasNormales: 8,
+      horasNormales: JORNADA_LEGAL_HORAS,
       calcularTodo: true
     };
   }
@@ -469,7 +488,7 @@ function getObservationRules(observacion) {
 }
 
 // =========================
-// Cálculo por día -> filas por concepto (MODIFICADO PARA OBSERVACIONES)
+// Cálculo por día -> filas por concepto (MODIFICADO PARA OBSERVACIONES Y JORNADA LEGAL)
 // =========================
 function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct}, day){
   const d = day.date;
@@ -491,13 +510,12 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     totalHoras = rules.horasNormales;
     
     // Para estos días especiales, generamos distribución proporcional de horas
-    // Asignamos todas las horas a la franja 7-8 (o una franja representativa)
     const nSlots = SLOT_END - SLOT_START;
     const basicSlots = Array(nSlots).fill(0);
     const auxSlots = Array(nSlots).fill(0);
     
     if (rules.pagoBasico) {
-      // Distribuir horas normales proporcionalmente
+      // Distribuir horas normales proporcionalmente según jornada legal
       const horasPorFranja = rules.horasNormales / nSlots;
       for (let i = 0; i < nSlots; i++) {
         basicSlots[i] = horasPorFranja;
@@ -534,7 +552,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     return rows;
   }
   
-  // DÍA NORMAL (sin observaciones especiales) - Cálculo original
+  // DÍA NORMAL (sin observaciones especiales) - Cálculo original con jornada legal
   const tIn  = parseTime12or24(day.entry);
   const tI1  = parseTime12or24(day.inter1);
   const tI2  = parseTime12or24(day.inter2);
@@ -579,7 +597,10 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
   }
 
   workedMinutes.sort((x,y)=>x-y);
-  const ordLimitMin = Math.round(parseFloat(jornada)*60);
+  
+  // CORRECCIÓN IMPORTANTE: Usar jornada legal de 440 minutos (7.33 horas)
+  const ordLimitMin = JORNADA_LEGAL_MINUTOS; // 440 minutos = 7.33 horas
+  
   const ordMinutes = workedMinutes.slice(0, ordLimitMin);
   const extraMinutes = workedMinutes.slice(ordLimitMin);
 
@@ -677,6 +698,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Concepto"] = concepto;
     row["Observación"] = observacion;
     row["Tipo Observación"] = rules.tipo;
+    row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
 
     labels.forEach((lab,i) => row[lab] = round3(slotHours[i] || 0));
     row["Total Horas"] = round3(totalHorasConcepto);
@@ -726,12 +748,12 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Total"] = fmtMoney(total);
     row["Valor Comisión"] = fmtMoney(valCom);
     row["Valor Total"] = fmtMoney(valTotal);
-    row["Observaciones"] = `Día ${rules.tipo} - ${observacion}`;
+    row["Observaciones"] = `Día ${rules.tipo} - ${observacion} - Jornada: ${JORNADA_LEGAL_HORAS}h`;
 
     return row;
   }
 
-  // Función original para días normales
+  // Función original para días normales (modificada para mostrar jornada legal)
   function buildRow(concepto, slotHours, factorAdicional, baseIncluida){
     const vh = parseFloat(valorHora||0);
     const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
@@ -755,6 +777,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
       row["Concepto"]=concepto;
       row["Observación"]=observacion;
       row["Tipo Observación"]=rules.tipo;
+      row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
       row["No auxilio de transporte"]= noAux ? 1 : "";
 
       labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
@@ -779,7 +802,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
       row["Total"]=fmtMoney(totalPorConcepto);
       row["Valor Comisión"]=fmtMoney(totalPorConcepto * comisionPct);
       row["Valor Total"]=fmtMoney(totalPorConcepto + (totalPorConcepto * comisionPct));
-      row["Observaciones"]="Auxilio proporcional a horas trabajadas";
+      row["Observaciones"]="Auxilio proporcional a horas trabajadas (jornada legal: " + JORNADA_LEGAL_HORAS + "h)";
 
       return row;
     }
@@ -833,6 +856,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Concepto"]=concepto;
     row["Observación"]=observacion;
     row["Tipo Observación"]=rules.tipo;
+    row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
     row["No auxilio de transporte"]= noAux ? 1 : "";
 
     labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
@@ -857,7 +881,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Total"]=fmtMoney(total);
     row["Valor Comisión"]=fmtMoney(valCom);
     row["Valor Total"]=fmtMoney(valTotal);
-    row["Observaciones"]="";
+    row["Observaciones"]="Jornada legal: " + JORNADA_LEGAL_HORAS + " horas/día";
 
     return row;
   }
@@ -1026,6 +1050,11 @@ document.getElementById("btnCalc").onclick = ()=>{
   const jornada = parseFloat(document.getElementById("jornada").value||8);
   const iniNoct = document.getElementById("iniNoct").value.trim() || "21:00";
   const finNoct = document.getElementById("finNoct").value.trim() || "06:00";
+  
+  // Mostrar advertencia si la jornada pactada es mayor a la legal
+  if (jornada > JORNADA_LEGAL_HORAS) {
+    alert("⚠️ Nota: La jornada pactada (" + jornada + "h) supera la jornada legal máxima de " + JORNADA_LEGAL_HORAS + " horas.\n\nLas horas extras se calcularán después de " + JORNADA_LEGAL_HORAS + " horas diarias.");
+  }
 
   const factors = {
     noct: parseFloat(document.getElementById("f_noct").value||0.35),
@@ -1084,7 +1113,7 @@ document.getElementById("btnXlsx").onclick = ()=>{
     alert("Primero calcula para generar el archivo.");
     return;
   }
-  exportToExcel(OUTPUT_ROWS, "nomina_por_horas.xlsx");
+  exportToExcel(OUTPUT_ROWS, "nomina_por_horas_7_33h.xlsx");
 };
 
 document.getElementById("btnCSV").onclick = ()=>{
@@ -1092,11 +1121,14 @@ document.getElementById("btnCSV").onclick = ()=>{
     alert("Primero calcula para generar el archivo.");
     return;
   }
-  exportToCSV(OUTPUT_ROWS, "nomina_por_horas.csv");
+  exportToCSV(OUTPUT_ROWS, "nomina_por_horas_7_33h.csv");
 };
 
 // Inicialización
 renderPreview([]);
+
+// Mostrar jornada legal en consola para referencia
+console.log("✅ Jornada legal configurada: " + JORNADA_LEGAL_HORAS + " horas (" + JORNADA_LEGAL_MINUTOS + " minutos)");
 </script>
 </body>
 </html>
