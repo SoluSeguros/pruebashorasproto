@@ -44,6 +44,14 @@
   th,td{border-bottom:1px solid var(--line);padding:8px 8px;font-size:12px;white-space:nowrap}
   th{color:var(--muted);text-align:left;background:rgba(34,48,85,.35);position:sticky;top:0}
   .tableWrap{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+  .info-box {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 12px;
+  }
 </style>
 </head>
 <body>
@@ -52,9 +60,18 @@
     <h1>Nómina por horas – salida tipo Excel (por concepto) - Jornada 7.33h</h1>
     <div class="small">
       Pegas tu tabla (Fecha / Entrada / Inter1 / Inter2 / Salida / Observaciones). El sistema crea filas por concepto y exporta a Excel.
-      <br><span class="warn">Nocturna:</span> desde <b>9:00 p. m.</b> hasta <b>6:00 a. m.</b> (configurable).
+      <br><span class="warn">IMPORTANTE:</span> <b>DIFERENCIAR FESTIVOS en OBSERVACIONES:</b>
+      <div class="info-box">
+        <span class="ok">✔ FLC</span> = <b>Festivo Laborado Compensado</b> (0.80 adicional) → Se da día libre<br>
+        <span class="warn">✔ FLSC</span> = <b>Festivo Laborado Sin Compensar</b> (1.80 adicional) → No se da día libre<br>
+        <span class="accent">Ejemplo:</span> "FESTIVO FLC" o "DOMINGO FLSC"
+      </div>
+      <span class="warn">Nocturna:</span> desde <b>9:00 p. m.</b> hasta <b>6:00 a. m.</b> (configurable).
       <br><span class="ok">Jornada legal:</span> Máximo <b>7.33 horas diarias</b> según ley colombiana (44 horas semanales).
-      <br><span class="ok">Nuevo:</span> Soporte para observaciones (COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.)
+      <br><span class="ok">Festivos Colombia:</span> Sistema reconoce <b>automáticamente</b> todos los festivos nacionales.
+      <br><span class="ok">Básico siempre incluido:</b> en las 220 horas (contrato), trabaje o no.
+      <br><span class="ok">Auxilio transporte:</b> por día laborado, no por horas. No excede valor diario.
+      <br><span class="ok">Compensatorios:</b> distribuidos de 10am-7pm (9 franjas de 7.33h).
     </div>
   </div>
 
@@ -80,8 +97,8 @@
           <input id="puesto" value="AUXILIAR"/>
         </div>
         <div>
-          <label>Salario mensual (opcional)</label>
-          <input id="salario" placeholder="1423500" />
+          <label>Salario mensual</label>
+          <input id="salario" value="1423500"/>
         </div>
       </div>
 
@@ -91,7 +108,7 @@
           <input id="valorHora" value="6470"/>
         </div>
         <div>
-          <label>Auxilio transporte diario</label>
+          <label>Auxilio transporte DIARIO</label>
           <input id="auxTrans" value="6667"/>
         </div>
       </div>
@@ -118,10 +135,22 @@
           <input id="jornadaLegal" value="7.33" readonly style="background:#0f1a33;color:var(--accent);font-weight:bold"/>
           <div class="small">Según ley colombiana (44h semanales ÷ 6 días)</div>
         </div>
+        <div>
+          <label>Salario mínimo mensual vigente</label>
+          <input id="salarioMinimo" value="1300000"/>
+          <div class="small">Para calcular derecho a auxilio</div>
+        </div>
       </div>
 
       <label>Tabla (pegar desde Excel). Formato esperado:</label>
       <div class="pill">FECHA | ENTRADA | INTER 1 | INTER 2 | SALIDA | OBSERVACIONES</div>
+      <div class="info-box">
+        <b>💡 CÓMO INDICAR FESTIVOS EN OBSERVACIONES:</b><br>
+        1. <span class="ok">"FLC"</span> → Festivo compensado (0.80 adicional) - <b>Se da día libre</b><br>
+        2. <span class="warn">"FLSC"</span> → Festivo sin compensar (1.80 adicional) - <b>No se da día libre</b><br>
+        3. <span class="accent">Si no especifica, se asume FLSC (1.80)</span><br>
+        <b>Ejemplos:</b> "FESTIVO FLC", "DOMINGO FLSC", "NAVIDAD FLC", "AÑO NUEVO FLSC"
+      </div>
       <textarea id="tabla" spellcheck="false">FECHA	HORA DE ENTRADA	HORA INTER 1	HORA INTER 2	HORA DE SALIDA	OBSERVACIONES
 1-nov-25	01:58 PM	05:59 PM	06:59 PM	12:11 AM	
 2-nov-25	01:30 PM	06:02 PM	07:00 PM	11:11 PM	
@@ -129,7 +158,7 @@
 4-nov-25					COMPENSATORIO
 5-nov-25					DIA DE LA FAMILIA
 6-nov-25	03:00 PM	04:35 PM	06:31 PM	10:21 PM	
-7-nov-25	09:57 AM	12:58 PM	04:59 PM	12:19 AM	
+7-nov-25	09:57 AM	12:58 PM	04:59 PM	12:19 AM	DOMINGO FLSC
 8-nov-25	02:00 PM	06:00 PM	06:59 PM	01:03 AM	
 9-nov-25	01:21 PM	05:04 PM	06:18 PM	10:06 PM	
 10-nov-25					COMPENSATORIO
@@ -137,7 +166,7 @@
 12-nov-25	02:59 PM	04:37 PM	06:45 PM	10:55 PM	
 13-nov-25	02:59 PM	04:58 PM	06:57 PM	11:24 PM	
 14-nov-25	01:57 PM	05:59 PM	06:59 PM	12:03 AM	
-15-nov-25	01:58 PM	06:00 PM	06:58 PM	12:30 AM</textarea>
+15-nov-25	01:58 PM	06:00 PM	06:58 PM	12:30 AM	FESTIVO FLC</textarea>
 
       <div class="btns">
         <button id="btnCalc">Calcular</button>
@@ -146,11 +175,12 @@
         <button class="secondary" id="btnClear">Limpiar resultado</button>
       </div>
       <div class="small" style="margin-top:10px">
-        <span class="ok">✔</span> <b>JORNADA LEGAL 7.33h</b>: Horas extras se calculan después de 7.33 horas diarias.
-        <br><span class="ok">✔</span> Soporta días con 2 tramos (descanso) o solo entrada/salida.
-        <br><span class="ok">✔</span> Cruce de medianoche (salidas tipo 12:11 AM) lo toma como día siguiente.
-        <br><span class="ok">✔</span> Auxilio transporte se distribuye proporcionalmente por horas trabajadas.
-        <br><span class="ok">✔</span> Procesa OBSERVACIONES: COMPENSATORIO, INCAPACIDAD, DIA DE LA FAMILIA, etc.
+        <span class="ok">✔</span> <b>FESTIVOS AUTOMÁTICOS:</b> Sistema detecta festivos nacionales colombianos.
+        <br><span class="ok">✔</span> <b>FLC vs FLSC:</b> Usar "FLC" (0.80) o "FLSC" (1.80) en Observaciones.
+        <br><span class="ok">✔</span> <b>SI NO ESPECIFICA:</b> Festivo detectado automáticamente = <b>FLSC (1.80)</b>
+        <br><span class="ok">✔</span> <b>BÁSICO SIEMPRE INCLUIDO:</b> Contrato de 220 horas mensuales.
+        <br><span class="ok">✔</span> <b>AUXILIO TRANSPORTE:</b> Por día laborado completo.
+        <br><span class="ok">✔</span> <b>COMPENSATORIOS:</b> Distribuidos de 10am a 7pm (9 franjas).
       </div>
     </div>
 
@@ -165,30 +195,56 @@
 
       <div class="row">
         <div>
-          <label>Recargo nocturno (adicional)</label>
+          <label>Recargo nocturno ordinario (adicional)</label>
           <input id="f_noct" value="0.35"/>
         </div>
         <div>
-          <label>Extra diurna (adicional)</label>
+          <label>Extra diurna ordinaria (adicional)</label>
           <input id="f_exd" value="0.25"/>
         </div>
       </div>
 
       <div class="row">
         <div>
-          <label>Extra nocturna (adicional)</label>
+          <label>Extra nocturna ordinaria (adicional)</label>
           <input id="f_exn" value="0.75"/>
         </div>
         <div>
-          <label>Dominical/Festivo diurno (adicional)</label>
-          <input id="f_fest_d" value="0.75"/>
+          <label>Festivo Compensado Diurno (FLC - adicional)</label>
+          <input id="f_flc_d" value="0.80"/>
+          <div class="small" style="color:var(--ok)">FLC: Se da día libre</div>
         </div>
       </div>
 
       <div class="row">
         <div>
-          <label>Dominical/Festivo nocturno (adicional)</label>
-          <input id="f_fest_n" value="1.10"/>
+          <label>Festivo Compensado Nocturno (FLC - adicional)</label>
+          <input id="f_flc_n" value="1.10"/>
+          <div class="small" style="color:var(--ok)">FLC: Se da día libre</div>
+        </div>
+        <div>
+          <label>Festivo Sin Compensar Diurno (FLSC - adicional)</label>
+          <input id="f_flsc_d" value="1.80"/>
+          <div class="small" style="color:var(--warn)">FLSC: No se da día libre</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Festivo Sin Compensar Nocturno (FLSC - adicional)</label>
+          <input id="f_flsc_n" value="2.10"/>
+          <div class="small" style="color:var(--warn)">FLSC: No se da día libre</div>
+        </div>
+        <div>
+          <label>Extra en Festivo Diurno (adicional al recargo)</label>
+          <input id="f_fest_exd" value="1.00"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Extra en Festivo Nocturno (adicional al recargo)</label>
+          <input id="f_fest_exn" value="1.00"/>
         </div>
         <div>
           <label>Comisión % (sobre Total)</label>
@@ -201,7 +257,7 @@
       <h2>3) Seguridad social y prestaciones (opcional)</h2>
       <div class="small">
         Si lo activas, calcula costos por concepto usando % típicos (puedes cambiarlos).
-        <br><b>Nota:</b> el Auxilio de transporte normalmente <b>no</b> entra como IBC.
+        <br><b>Nota:</b> Para jornada incompleta, se calcula sobre salario completo.
       </div>
 
       <div class="row">
@@ -258,7 +314,9 @@
       </div>
 
       <div class="small" style="margin-top:10px">
-        Si tus porcentajes en Excel son distintos, los cambias aquí y te queda igual.
+        <b>Compensatorios:</b> Distribuidos de 10am a 7pm (9 franjas de 0.814h = 7.33h total).
+        <br><b>Jornada incompleta:</b> Si el empleado labora menos de 7.33h, recibe salario completo.
+        <br><b>Básico siempre incluido:</b> El salario básico corresponde a 220 horas mensuales (contrato).
       </div>
     </div>
   </div>
@@ -274,7 +332,12 @@
     </div>
     <div class="small" style="margin-top:10px">
       <b>Exporta Excel</b> para tenerlo con todas las columnas como plantilla.
-      <br><b>Nota:</b> Horas extras se calculan después de 7.33 horas diarias (440 minutos).
+      <br><b>💡 CLAVE PARA FESTIVOS:</b>
+      <br><span class="ok">• FLC (Festivo Laborado Compensado):</span> 0.80 adicional - <b>Se da día libre</b>
+      <br><span class="warn">• FLSC (Festivo Laborado Sin Compensar):</span> 1.80 adicional - <b>No se da día libre</b>
+      <br><b>Compensatorios:</b> 7.33h distribuidas de 10am a 7pm (9 franjas).
+      <br><b>Básico siempre:</b> Aparece el concepto "Básico" aunque trabaje solo nocturno o festivo.
+      <br><b>Auxilio transporte:</b> Por día laborado, no por horas. Completo si trabaja cualquier hora.
     </div>
   </div>
 </div>
@@ -296,7 +359,153 @@ function checkXLSXLoaded() {
 // =========================
 const JORNADA_LEGAL_HORAS = 7.33;        // Horas máximas por día según ley
 const JORNADA_LEGAL_MINUTOS = 440;      // 7.33 * 60 = 439.8 ≈ 440 minutos
-const DIAS_SEMANA_LABORAL = 6;          // Días laborales por semana (para cálculo 44h/6días)
+
+// =========================
+// FESTIVOS COLOMBIA (AÑO ESPECÍFICO - 2025)
+// =========================
+function getFestivosColombia(year) {
+  const festivos = [];
+  
+  // Festivos fijos en Colombia
+  festivos.push(new Date(year, 0, 1));    // Año Nuevo
+  festivos.push(new Date(year, 0, 6));    // Día de los Reyes Magos
+  festivos.push(new Date(year, 2, 19));   // Día de San José
+  festivos.push(new Date(year, 3, 6));    // Domingo de Ramos
+  festivos.push(new Date(year, 3, 10));   // Jueves Santo
+  festivos.push(new Date(year, 3, 11));   // Viernes Santo
+  festivos.push(new Date(year, 4, 1));    // Día del Trabajo
+  festivos.push(new Date(year, 4, 12));   // Día de la Ascensión
+  festivos.push(new Date(year, 5, 2));    // Corpus Christi
+  festivos.push(new Date(year, 5, 23));   // Sagrado Corazón
+  festivos.push(new Date(year, 5, 30));   // San Pedro y San Pablo
+  festivos.push(new Date(year, 6, 20));   // Día de la Independencia
+  festivos.push(new Date(year, 7, 7));    // Batalla de Boyacá
+  festivos.push(new Date(year, 7, 18));   // La Asunción de la Virgen
+  festivos.push(new Date(year, 9, 13));   // Día de la Raza
+  festivos.push(new Date(year, 10, 3));   // Día de Todos los Santos
+  festivos.push(new Date(year, 10, 17));  // Independencia de Cartagena
+  festivos.push(new Date(year, 11, 8));   // Día de la Inmaculada Concepción
+  festivos.push(new Date(year, 11, 25));  // Navidad
+  
+  // Para 2025 específicamente, ajustar según el calendario oficial
+  if (year === 2025) {
+    // Reyes Magos (primer lunes después del 6 de enero)
+    festivos[1] = new Date(2025, 0, 6); // 6 de enero es lunes en 2025
+    
+    // Domingo de Ramos (13 de abril 2025)
+    festivos[3] = new Date(2025, 3, 13);
+    
+    // Jueves Santo (17 de abril 2025)
+    festivos[4] = new Date(2025, 3, 17);
+    
+    // Viernes Santo (18 de abril 2025)
+    festivos[5] = new Date(2025, 3, 18);
+    
+    // Ascensión (26 de mayo 2025 - luna)
+    festivos[6] = new Date(2025, 4, 26);
+    
+    // Corpus Christi (5 de junio 2025 - jueves)
+    festivos[7] = new Date(2025, 5, 5);
+    
+    // Sagrado Corazón (26 de junio 2025 - jueves)
+    festivos[8] = new Date(2025, 5, 26);
+    
+    // San Pedro y San Pablo (30 de junio 2025 - lunes)
+    festivos[9] = new Date(2025, 5, 30);
+  }
+  
+  return festivos;
+}
+
+// Función para verificar si una fecha es festivo en Colombia
+function esFestivoColombia(fecha) {
+  const year = fecha.getFullYear();
+  const festivos = getFestivosColombia(year);
+  const esDomingo = fecha.getDay() === 0;
+  
+  // Si es domingo, siempre es festivo
+  if (esDomingo) return true;
+  
+  // Verificar si está en la lista de festivos
+  return festivos.some(festivo => 
+    festivo.getDate() === fecha.getDate() &&
+    festivo.getMonth() === fecha.getMonth() &&
+    festivo.getFullYear() === fecha.getFullYear()
+  );
+}
+
+// Función para obtener el nombre del festivo
+function getNombreFestivo(fecha) {
+  const year = fecha.getFullYear();
+  
+  // Mapeo de festivos por fecha
+  const festivos2025 = {
+    '01-01': 'Año Nuevo',
+    '01-06': 'Día de los Reyes Magos',
+    '03-19': 'Día de San José',
+    '04-13': 'Domingo de Ramos',
+    '04-17': 'Jueves Santo',
+    '04-18': 'Viernes Santo',
+    '05-01': 'Día del Trabajo',
+    '05-26': 'Día de la Ascensión',
+    '06-05': 'Corpus Christi',
+    '06-26': 'Sagrado Corazón',
+    '06-30': 'San Pedro y San Pablo',
+    '07-20': 'Día de la Independencia',
+    '08-07': 'Batalla de Boyacá',
+    '08-18': 'La Asunción de la Virgen',
+    '10-13': 'Día de la Raza',
+    '11-03': 'Día de Todos los Santos',
+    '11-17': 'Independencia de Cartagena',
+    '12-08': 'Día de la Inmaculada Concepción',
+    '12-25': 'Navidad'
+  };
+  
+  const clave = `${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+  
+  if (fecha.getDay() === 0 && !festivos2025[clave]) {
+    return 'Domingo';
+  }
+  
+  return festivos2025[clave] || '';
+}
+
+// =========================
+// MEJORADO: Detectar tipo de festivo por observaciones (FLC vs FLSC)
+// =========================
+function getTipoFestivo(observacion, fecha) {
+  if (!observacion) {
+    // Si no hay observación pero es festivo por calendario, asumir FLSC (1.80)
+    if (fecha && esFestivoColombia(fecha)) {
+      return "FESTIVO_NO_COMPENSADO"; // FLSC por defecto
+    }
+    return null;
+  }
+  
+  const obs = observacion.trim().toUpperCase();
+  
+  // PRIORIDAD 1: Buscar específicamente FLC o FLSC
+  if (obs.includes("FLC")) {
+    return "FESTIVO_COMPENSADO";
+  }
+  
+  if (obs.includes("FLSC")) {
+    return "FESTIVO_NO_COMPENSADO";
+  }
+  
+  // PRIORIDAD 2: Si dice festivo pero no especifica
+  if (obs.includes("FESTIVO") || obs.includes("DOMINGO") || obs.includes("DOMINICAL")) {
+    // Por defecto: Festivo detectado automáticamente = FLSC (1.80)
+    return "FESTIVO_NO_COMPENSADO";
+  }
+  
+  // Si no es festivo por observación pero sí por calendario
+  if (fecha && esFestivoColombia(fecha)) {
+    return "FESTIVO_NO_COMPENSADO"; // FLSC por defecto
+  }
+  
+  return null;
+}
 
 // =========================
 // Utilidades de tiempo
@@ -354,7 +563,18 @@ function minutesBetween(a,b){
 
 function dayNameES(d){
   const arr = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-  return arr[d.getDay()];
+  const nombre = arr[d.getDay()];
+  const esFestivo = esFestivoColombia(d);
+  const nombreFestivo = getNombreFestivo(d);
+  
+  if (esFestivo) {
+    if (nombreFestivo) {
+      return nombre + " 🎉 (" + nombreFestivo + ")";
+    } else {
+      return nombre + " 🎉";
+    }
+  }
+  return nombre;
 }
 
 function fmtCOP(n){
@@ -410,44 +630,11 @@ function getObservationRules(observacion) {
       pagoAuxilio: true,
       pagoExtras: false,
       pagoRecargos: false,
-      horasNormales: JORNADA_LEGAL_HORAS, // Día completo según jornada legal
-      calcularTodo: true
-    };
-  }
-  
-  if (obs.includes("INCAPACIDAD")) {
-    return {
-      tipo: "INCAPACIDAD",
-      pagoBasico: true,
-      pagoAuxilio: false,
-      pagoExtras: false,
-      pagoRecargos: false,
-      horasNormales: JORNADA_LEGAL_HORAS, // Asume jornada completa legal
-      calcularTodo: true
-    };
-  }
-  
-  if (obs.includes("DIA DE LA FAMILIA") || obs.includes("FESTIVO")) {
-    return {
-      tipo: "DIA_FESTIVO",
-      pagoBasico: true,
-      pagoAuxilio: false,
-      pagoExtras: false,
-      pagoRecargos: false,
-      horasNormales: JORNADA_LEGAL_HORAS, // Día festivo pagado según jornada legal
-      calcularTodo: true
-    };
-  }
-  
-  if (obs.includes("FALTA INJUSTIFICADA")) {
-    return {
-      tipo: "FALTA_INJUSTIFICADA",
-      pagoBasico: false,
-      pagoAuxilio: false,
-      pagoExtras: false,
-      pagoRecargos: false,
-      horasNormales: 0,
-      calcularTodo: false // No calcular nada
+      horasNormales: JORNADA_LEGAL_HORAS,
+      calcularTodo: true,
+      horarioEspecial: true,
+      inicioLaboral: 10,
+      finLaboral: 19
     };
   }
   
@@ -459,7 +646,50 @@ function getObservationRules(observacion) {
       pagoExtras: false,
       pagoRecargos: false,
       horasNormales: JORNADA_LEGAL_HORAS,
-      calcularTodo: true
+      calcularTodo: true,
+      horarioEspecial: true,
+      inicioLaboral: 10,
+      finLaboral: 19
+    };
+  }
+  
+  if (obs.includes("INCAPACIDAD")) {
+    return {
+      tipo: "INCAPACIDAD",
+      pagoBasico: true,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: JORNADA_LEGAL_HORAS,
+      calcularTodo: true,
+      horarioEspecial: false
+    };
+  }
+  
+  if (obs.includes("DIA DE LA FAMILIA") || obs.includes("FESTIVO NO LABORADO")) {
+    return {
+      tipo: "DIA_FESTIVO_NO_LABORADO",
+      pagoBasico: true,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: JORNADA_LEGAL_HORAS,
+      calcularTodo: true,
+      horarioEspecial: true,
+      inicioLaboral: 10,
+      finLaboral: 19
+    };
+  }
+  
+  if (obs.includes("FALTA INJUSTIFICADA")) {
+    return {
+      tipo: "FALTA_INJUSTIFICADA",
+      pagoBasico: false,
+      pagoAuxilio: false,
+      pagoExtras: false,
+      pagoRecargos: false,
+      horasNormales: 0,
+      calcularTodo: false
     };
   }
   
@@ -471,7 +701,7 @@ function getObservationRules(observacion) {
       pagoExtras: false,
       pagoRecargos: false,
       horasNormales: 0,
-      calcularTodo: false // No calcular nada
+      calcularTodo: false
     };
   }
   
@@ -482,126 +712,301 @@ function getObservationRules(observacion) {
     pagoAuxilio: true,
     pagoExtras: true,
     pagoRecargos: true,
-    horasNormales: null, // Se calculará según horario real
-    calcularTodo: true
+    horasNormales: null,
+    calcularTodo: true,
+    horarioEspecial: false
   };
 }
 
 // =========================
-// Cálculo por día -> filas por concepto (MODIFICADO PARA OBSERVACIONES Y JORNADA LEGAL)
+// NUEVO: Obtener etiqueta descriptiva para tipo de festivo
 // =========================
-function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct}, day){
+function getEtiquetaFestivo(tipoFestivo) {
+  switch(tipoFestivo) {
+    case "FESTIVO_COMPENSADO":
+      return "FLC (Compensado - 0.80)";
+    case "FESTIVO_NO_COMPENSADO":
+      return "FLSC (Sin Compensar - 1.80)";
+    default:
+      return "";
+  }
+}
+
+// =========================
+// Calcular pago básico considerando jornada incompleta
+// =========================
+function calcularPagoBasico(horasTrabajadas, valorHora, salarioDiario) {
+  const horasLegales = JORNADA_LEGAL_HORAS;
+  
+  if (horasTrabajadas < horasLegales && horasTrabajadas > 0) {
+    const valorHoraEfectivo = salarioDiario / horasTrabajadas;
+    
+    return {
+      pagoTotal: salarioDiario,
+      valorHoraEfectivo: valorHoraEfectivo,
+      horasFacturadas: horasTrabajadas,
+      esJornadaIncompleta: true,
+      mensaje: `Jornada incompleta (${horasTrabajadas.toFixed(2)}h < ${horasLegales}h): Salario completo`
+    };
+  } else {
+    const pago = horasTrabajadas * valorHora;
+    return {
+      pagoTotal: pago,
+      valorHoraEfectivo: valorHora,
+      horasFacturadas: horasTrabajadas,
+      esJornadaIncompleta: false,
+      mensaje: `Jornada normal (${horasTrabajadas.toFixed(2)}h)`
+    };
+  }
+}
+
+// =========================
+// Distribuir horas en franjas específicas (10am-7pm)
+// =========================
+function distribuirHorasEnFranjasLaborales(nSlots, totalHoras, inicioLaboral = 10, finLaboral = 19) {
+  const slots = Array(nSlots).fill(0);
+  
+  const franjasLaborales = [];
+  for (let i = 0; i < nSlots; i++) {
+    const horaFranja = SLOT_START + i;
+    franjasLaborales[i] = (horaFranja >= inicioLaboral && horaFranja < finLaboral);
+  }
+  
+  const totalFranjasLaborales = franjasLaborales.filter(B => B).length;
+  
+  if (totalFranjasLaborales === 0) {
+    const horasPorFranja = totalHoras / nSlots;
+    for (let i = 0; i < nSlots; i++) {
+      slots[i] = horasPorFranja;
+    }
+  } else {
+    const horasPorFranjaLaboral = totalHoras / totalFranjasLaborales;
+    for (let i = 0; i < nSlots; i++) {
+      slots[i] = franjasLaborales[i] ? horasPorFranjaLaboral : 0;
+    }
+  }
+  
+  return slots;
+}
+
+// =========================
+// Distribuir horas básicas (SIEMPRE 7.33h para el básico)
+// =========================
+function distribuirHorasBasicas(horasDiurnasTrabajadas, esJornadaIncompleta, totalHorasTrabajadas = 0) {
+  const nSlots = SLOT_END - SLOT_START;
+  const slots = Array(nSlots).fill(0);
+  
+  const horasBasicas = JORNADA_LEGAL_HORAS;
+  
+  if (horasDiurnasTrabajadas > 0) {
+    const inicioLaboral = 9;
+    const finLaboral = 17;
+    
+    const horasPorFranjaLaboral = horasBasicas / (finLaboral - inicioLaboral);
+    
+    for (let i = 0; i < nSlots; i++) {
+      const horaFranja = SLOT_START + i;
+      if (horaFranja >= inicioLaboral && horaFranja < finLaboral) {
+        slots[i] = horasPorFranjaLaboral;
+      }
+    }
+  } else {
+    const inicioLaboral = 9;
+    const finLaboral = 17;
+    
+    const horasPorFranjaLaboral = horasBasicas / (finLaboral - inicioLaboral);
+    
+    for (let i = 0; i < nSlots; i++) {
+      const horaFranja = SLOT_START + i;
+      if (horaFranja >= inicioLaboral && horaFranja < finLaboral) {
+        slots[i] = horasPorFranjaLaboral;
+      }
+    }
+  }
+  
+  return slots;
+}
+
+// =========================
+// Calcular derecho a auxilio de transporte
+// =========================
+function calcularDerechoAuxilio(salarioMensual, salarioMinimoMensual) {
+  return salarioMensual <= (salarioMinimoMensual * 2);
+}
+
+// =========================
+// Calcular auxilio de transporte CORRECTO
+// =========================
+function calcularAuxilioTransporte(salarioMensual, salarioMinimoMensual, auxilioMensual, horasTrabajadas, esFestivo = false, rules = null) {
+  const tieneDerecho = calcularDerechoAuxilio(salarioMensual, salarioMinimoMensual);
+  if (!tieneDerecho) {
+    return {
+      valor: 0,
+      mensaje: "No tiene derecho a auxilio (salario > 2 SMLMV)",
+      auxilioCompleto: false
+    };
+  }
+  
+  const trabajoAlgunaHora = horasTrabajadas > 0;
+  
+  if (rules) {
+    if (rules.pagoAuxilio && trabajoAlgunaHora) {
+      const auxilioDiario = auxilioMensual / 30;
+      const salarioDiario = salarioMensual / 30;
+      const auxilioFinal = Math.min(auxilioDiario, salarioDiario);
+      
+      return {
+        valor: auxilioFinal,
+        mensaje: "Auxilio completo (día laborado)",
+        auxilioCompleto: true
+      };
+    }
+    return {
+      valor: 0,
+      mensaje: "No corresponde auxilio según reglas",
+      auxilioCompleto: false
+    };
+  }
+  
+  if (trabajoAlgunaHora) {
+    const auxilioDiario = auxilioMensual / 30;
+    const salarioDiario = salarioMensual / 30;
+    const auxilioFinal = Math.min(auxilioDiario, salarioDiario);
+    
+    return {
+      valor: auxilioFinal,
+      mensaje: "Auxilio completo (día laborado)",
+      auxilioCompleto: true
+    };
+  }
+  
+  return {
+    valor: 0,
+    mensaje: "No trabajó, no hay auxilio",
+    auxilioCompleto: false
+  };
+}
+
+// =========================
+// Cálculo por día -> filas por concepto
+// =========================
+function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct,salarioMinimo}, day){
   const d = day.date;
   const dia = dayNameES(d);
   const observacion = day.observacion || "";
   const rules = getObservationRules(observacion);
   
+  // MEJORADO: Obtener tipo de festivo considerando fecha y observación
+  const tipoFestivoObservacion = getTipoFestivo(observacion, d);
+  
+  // Determinar si es festivo (por calendario O por observación)
+  const esFestivoPorCalendario = esFestivoColombia(d);
+  const esFestivoPorObservacion = tipoFestivoObservacion !== null;
+  const esFestivo = esFestivoPorCalendario || esFestivoPorObservacion;
+  
+  // Determinar tipo de festivo
+  let tipoFestivo = null;
+  if (esFestivo) {
+    if (tipoFestivoObservacion) {
+      tipoFestivo = tipoFestivoObservacion; // Prioridad a observación
+    } else if (esFestivoPorCalendario) {
+      // Festivo detectado automáticamente = FLSC (1.80)
+      tipoFestivo = "FESTIVO_NO_COMPENSADO";
+    }
+  }
+  
+  // NUEVO: Verificar si es día NO laborado por ser festivo
+  const tIn = parseTime12or24(day.entry);
+  const tOut = parseTime12or24(day.exit);
+  const tieneHorarioLaborado = tIn && tOut;
+  
+  // Si es festivo pero NO tiene horario laborado, tratarlo como día festivo no laborado
+  if (esFestivo && !tieneHorarioLaborado && !observacion.includes("FLC") && !observacion.includes("FLSC")) {
+    // Día festivo no laborado: básico completo, sin auxilio, distribuido 10am-7pm
+    return procesarDiaFestivoNoLaborado({
+      nombre, empresa, puesto, salario, valorHora, auxTrans,
+      d, dia, observacion, rules, comisionPct, ss, prest,
+      salarioMinimo, tipoFestivo, esFestivo
+    });
+  }
+  
   // Si no se debe calcular nada (FALTA INJUSTIFICADA, LICENCIA NO REMUNERADA)
   if (!rules.calcularTodo) {
-    return []; // Retorna array vacío, no genera filas
+    return [];
   }
   
   const intervals = [];
   let totalHoras = 0;
+  let horasDiurnasTrabajadas = 0;
+  let horasNocturnasTrabajadas = 0;
   
-  // Si es un día con reglas especiales (COMPENSATORIO, INCAPACIDAD, etc.)
+  // ============================================
+  // 1. DÍAS CON REGLAS ESPECIALES (Compensatorio, Empleado del Mes, etc.)
+  // ============================================
   if (rules.horasNormales !== null) {
-    // Días especiales: usar horasNormales definidas en las reglas
-    totalHoras = rules.horasNormales;
-    
-    // Para estos días especiales, generamos distribución proporcional de horas
-    const nSlots = SLOT_END - SLOT_START;
-    const basicSlots = Array(nSlots).fill(0);
-    const auxSlots = Array(nSlots).fill(0);
-    
-    if (rules.pagoBasico) {
-      // Distribuir horas normales proporcionalmente según jornada legal
-      const horasPorFranja = rules.horasNormales / nSlots;
-      for (let i = 0; i < nSlots; i++) {
-        basicSlots[i] = horasPorFranja;
-        if (rules.pagoAuxilio) {
-          auxSlots[i] = horasPorFranja;
-        }
-      }
-    }
-    
-    // Construir filas según reglas
-    const rows = [];
-    if (rules.pagoBasico && totalHoras > 0) {
-      rows.push(buildRowSpecial({
-        nombre, empresa, puesto, salario, valorHora, auxTrans, 
-        d, dia, observacion, rules, comisionPct, ss, prest,
-        concepto: "Básico",
-        slotHours: basicSlots,
-        incluirAuxilio: false,
-        esBasico: true
-      }));
-    }
-    
-    if (rules.pagoAuxilio && auxTrans > 0 && totalHoras > 0) {
-      rows.push(buildRowSpecial({
-        nombre, empresa, puesto, salario, valorHora, auxTrans, 
-        d, dia, observacion, rules, comisionPct, ss, prest,
-        concepto: "Auxilio de Transporte",
-        slotHours: auxSlots,
-        incluirAuxilio: true,
-        esBasico: false
-      }));
-    }
-    
-    return rows;
+    return procesarDiaEspecial({
+      nombre, empresa, puesto, salario, valorHora, auxTrans,
+      d, dia, observacion, rules, comisionPct, ss, prest,
+      salarioMinimo, esFestivo, tipoFestivo
+    });
   }
   
-  // DÍA NORMAL (sin observaciones especiales) - Cálculo original con jornada legal
-  const tIn  = parseTime12or24(day.entry);
-  const tI1  = parseTime12or24(day.inter1);
-  const tI2  = parseTime12or24(day.inter2);
-  const tOut = parseTime12or24(day.exit);
+  // ============================================
+  // 2. DÍAS NORMALES (con horario real)
+  // ============================================
+  const tI1 = parseTime12or24(day.inter1);
+  const tI2 = parseTime12or24(day.inter2);
 
-  if(!tIn || !tOut) return [];
-  if(tI1 && tI2){
-    const a1 = toDateTime(d, tIn);
-    const b1 = toDateTime(d, tI1);
-    const a2 = toDateTime(d, tI2);
-    let b2 = toDateTime(d, tOut);
-    if(b2 < a2) b2 = new Date(b2.getTime() + 24*60*60000);
-    let bb1=b1; if(bb1<a1) bb1 = new Date(bb1.getTime()+24*60*60000);
-    intervals.push([a1, bb1]);
-    intervals.push([a2, b2]);
+  if(!tIn || !tOut) {
+    if (observacion && (observacion.includes("VACACIONES") || observacion.includes("LICENCIA"))) {
+      totalHoras = 0;
+    } else {
+      return [];
+    }
   } else {
-    const a = toDateTime(d, tIn);
-    let b = toDateTime(d, tOut);
-    if(b < a) b = new Date(b.getTime() + 24*60*60000);
-    intervals.push([a,b]);
+    if(tI1 && tI2){
+      const a1 = toDateTime(d, tIn);
+      const b1 = toDateTime(d, tI1);
+      const a2 = toDateTime(d, tI2);
+      let b2 = toDateTime(d, tOut);
+      if(b2 < a2) b2 = new Date(b2.getTime() + 24*60*60000);
+      let bb1=b1; if(bb1<a1) bb1 = new Date(bb1.getTime()+24*60*60000);
+      intervals.push([a1, bb1]);
+      intervals.push([a2, b2]);
+    } else {
+      const a = toDateTime(d, tIn);
+      let b = toDateTime(d, tOut);
+      if(b < a) b = new Date(b.getTime() + 24*60*60000);
+      intervals.push([a,b]);
+    }
+
+    let totalMin = 0;
+    for(const [a,b] of intervals) totalMin += minutesBetween(a,b);
+    totalHoras = totalMin/60;
   }
-
-  let totalMin = 0;
-  for(const [a,b] of intervals) totalMin += minutesBetween(a,b);
-  totalHoras = totalMin/60;
-
+  
+  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
+  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
+  
   const iniNoctMin = hhmmToMin(iniNoct);
   const finNoctMin = hhmmToMin(finNoct);
   const labels = slotLabels();
   const nSlots = labels.length;
 
-  const esDomingo = (d.getDay()===0);
-  const festivo = esDomingo;
-
-  const workedMinutes = [];
-  for(const [a,b] of intervals){
-    let t = new Date(a);
-    while(t < b){
-      workedMinutes.push(new Date(t));
-      t.setMinutes(t.getMinutes()+1);
+  let workedMinutes = [];
+  if (totalHoras > 0) {
+    for(const [a,b] of intervals){
+      let t = new Date(a);
+      while(t < b){
+        workedMinutes.push(new Date(t));
+        t.setMinutes(t.getMinutes()+1);
+      }
     }
+    workedMinutes.sort((x,y)=>x-y);
   }
 
-  workedMinutes.sort((x,y)=>x-y);
-  
-  // CORRECCIÓN IMPORTANTE: Usar jornada legal de 440 minutos (7.33 horas)
-  const ordLimitMin = JORNADA_LEGAL_MINUTOS; // 440 minutos = 7.33 horas
-  
-  const ordMinutes = workedMinutes.slice(0, ordLimitMin);
+  const ordLimitMin = JORNADA_LEGAL_MINUTOS;
+  const ordMinutes = workedMinutes.slice(0, Math.min(ordLimitMin, workedMinutes.length));
   const extraMinutes = workedMinutes.slice(ordLimitMin);
 
   function addMinuteToSlots(arr, dt){
@@ -615,13 +1020,20 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     if(idx>=0) arr[idx] += 1/60;
   }
 
-  const basicSlots = Array(nSlots).fill(0);
-  const auxSlots   = Array(nSlots).fill(0);
+  const basicSlots = distribuirHorasBasicas(0, pagoBasicoInfo.esJornadaIncompleta, totalHoras);
+  
   const noctRecSlots = Array(nSlots).fill(0);
   const exdSlots = Array(nSlots).fill(0);
   const exnSlots = Array(nSlots).fill(0);
-  const festDiurnoSlots = Array(nSlots).fill(0);
-  const festNoctSlots   = Array(nSlots).fill(0);
+  
+  const flcDiurnoSlots = Array(nSlots).fill(0);
+  const flcNoctSlots = Array(nSlots).fill(0);
+  const flscDiurnoSlots = Array(nSlots).fill(0);
+  const flscNoctSlots = Array(nSlots).fill(0);
+  const festExdSlots = Array(nSlots).fill(0);
+  const festExnSlots = Array(nSlots).fill(0);
+  
+  const auxSlots = Array(nSlots).fill(0);
 
   function isNoctDT(dt){
     const baseDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
@@ -632,35 +1044,80 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     return isNocturna(minFromMid, iniNoctMin, finNoctMin);
   }
 
-  // Contar minutos trabajados en cada franja (para auxilio - TODAS las horas)
-  const allWorkedMinutes = ordMinutes.concat(extraMinutes);
-  for(const dt of allWorkedMinutes){
-    addMinuteToSlots(auxSlots, dt);
-  }
-
-  for(const dt of ordMinutes){
-    addMinuteToSlots(basicSlots, dt);
-    if(isNoctDT(dt)) addMinuteToSlots(noctRecSlots, dt);
-  }
-
-  for(const dt of extraMinutes){
-    const noct = isNoctDT(dt);
-    if(festivo){
-      if(noct) addMinuteToSlots(festNoctSlots, dt);
-      else     addMinuteToSlots(festDiurnoSlots, dt);
-    } else {
-      if(noct) addMinuteToSlots(exnSlots, dt);
-      else     addMinuteToSlots(exdSlots, dt);
+  if (totalHoras > 0) {
+    for(const dt of ordMinutes){
+      const noct = isNoctDT(dt);
+      
+      if(esFestivo){
+        const esNoCompensado = tipoFestivo === "FESTIVO_NO_COMPENSADO";
+        
+        if(noct){
+          if(esNoCompensado){
+            addMinuteToSlots(flscNoctSlots, dt);
+          } else {
+            addMinuteToSlots(flcNoctSlots, dt);
+          }
+        } else {
+          if(esNoCompensado){
+            addMinuteToSlots(flscDiurnoSlots, dt);
+          } else {
+            addMinuteToSlots(flcDiurnoSlots, dt);
+          }
+        }
+      } else {
+        if(noct){
+          addMinuteToSlots(noctRecSlots, dt);
+          horasNocturnasTrabajadas += 1/60;
+        } else {
+          horasDiurnasTrabajadas += 1/60;
+        }
+      }
+    }
+    
+    for(const dt of extraMinutes){
+      const noct = isNoctDT(dt);
+      
+      if(esFestivo){
+        if(noct){
+          addMinuteToSlots(festExnSlots, dt);
+        } else {
+          addMinuteToSlots(festExdSlots, dt);
+        }
+      } else {
+        if(noct){
+          addMinuteToSlots(exnSlots, dt);
+        } else {
+          addMinuteToSlots(exdSlots, dt);
+        }
+      }
     }
   }
 
-  const noAux = false;
-  const auxValue = (!noAux && totalMin>0) ? parseFloat(auxTrans||0) : 0;
+  const auxilioInfo = calcularAuxilioTransporte(
+    parseFloat(salario || 0),
+    parseFloat(salarioMinimo || 0),
+    auxTrans * 30,
+    totalHoras,
+    esFestivo,
+    rules
+  );
 
-  // Función auxiliar para construir filas especiales (días con observaciones)
+  if (auxilioInfo.valor > 0 && totalHoras > 0) {
+    const totalHorasTrabajadasEnFranjas = workedMinutes.length / 60;
+    for(const dt of workedMinutes){
+      addMinuteToSlots(auxSlots, dt);
+    }
+    const factorAjuste = 1 / (totalHorasTrabajadasEnFranjas > 0 ? totalHorasTrabajadasEnFranjas : 1);
+    for(let i = 0; i < auxSlots.length; i++) {
+      auxSlots[i] = auxSlots[i] * factorAjuste;
+    }
+  }
+
+  // Función auxiliar para construir filas especiales
   function buildRowSpecial(params){
     const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
-           comisionPct, ss, prest, concepto, slotHours, incluirAuxilio, esBasico} = params;
+           comisionPct, ss, prest, concepto, slotHours, incluirAuxilio, esBasico, esFestivo, 
+           pagoBasicoCalculado, auxilioInfo, horarioEspecial, tipoFestivoEspecial} = params;
     
     const vh = parseFloat(valorHora||0);
     const labels = slotLabels();
@@ -669,7 +1126,6 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     const vlrSlots = [];
 
     if (incluirAuxilio) {
-      // Para Auxilio de Transporte: distribución proporcional
       for (let i = 0; i < slotHours.length; i++) {
         const horasInSlot = slotHours[i];
         if (totalHorasConcepto === 0) {
@@ -680,9 +1136,8 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
       }
       totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
     } else if (esBasico) {
-      // Para Básico: valor hora normal
       for (let i = 0; i < slotHours.length; i++) {
-        vlrSlots.push(slotHours[i] * vh);
+        vlrSlots.push((slotHours[i] / totalHorasConcepto) * pagoBasicoCalculado.pagoTotal);
       }
       totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
     }
@@ -691,14 +1146,25 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Nombre completo"] = nombre;
     row["Empresa"] = empresa;
     row["Puesto"] = puesto;
-    row[" Salario "] = salario ? salario : "";
+    row["Salario mensual"] = salario ? salario : "";
     row["Valor Hora"] = vh;
     row["Fecha"] = formatDateES(d);
-    row["dia"] = dia;
+    row["Día"] = dia;
+    row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
+    // MEJORADO: Mostrar tipo de festivo claramente
+    if (tipoFestivoEspecial) {
+      row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivoEspecial);
+    } else if (esFestivo) {
+      row["Tipo Festivo"] = "FLSC (Sin especificar)";
+    }
     row["Concepto"] = concepto;
     row["Observación"] = observacion;
     row["Tipo Observación"] = rules.tipo;
     row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
+    row["Jornada Incompleta"] = pagoBasicoCalculado.esJornadaIncompleta ? "Sí" : "No";
+    if (horarioEspecial) {
+      row["Horario Distribución"] = horarioEspecial;
+    }
 
     labels.forEach((lab,i) => row[lab] = round3(slotHours[i] || 0));
     row["Total Horas"] = round3(totalHorasConcepto);
@@ -706,7 +1172,6 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     labels.forEach((lab,i) => row["vlr "+lab.replace("-","-")] = fmtMoney(vlrSlots[i] || 0));
     row["Total por concepto"] = fmtMoney(totalPorConcepto);
 
-    // Seguridad Social y Prestaciones
     const ibc = esBasico ? totalPorConcepto : 0;
     
     const calcSS = ss.enabled && esBasico ? {
@@ -748,42 +1213,65 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Total"] = fmtMoney(total);
     row["Valor Comisión"] = fmtMoney(valCom);
     row["Valor Total"] = fmtMoney(valTotal);
-    row["Observaciones"] = `Día ${rules.tipo} - ${observacion} - Jornada: ${JORNADA_LEGAL_HORAS}h`;
+    
+    let observacionMsg = pagoBasicoCalculado.mensaje;
+    if (horarioEspecial === "10am-7pm") {
+      observacionMsg += " | Distribuido en horario 10am-7pm (9 franjas)";
+    }
+    if (tipoFestivoEspecial) {
+      const etiqueta = getEtiquetaFestivo(tipoFestivoEspecial);
+      observacionMsg += " | " + etiqueta;
+    }
+    if (auxilioInfo) {
+      observacionMsg += " | " + auxilioInfo.mensaje;
+    }
+    row["Observaciones"] = observacionMsg;
 
     return row;
   }
 
-  // Función original para días normales (modificada para mostrar jornada legal)
-  function buildRow(concepto, slotHours, factorAdicional, baseIncluida){
+  // Función para construir filas para días normales/festivos
+  function buildRow(concepto, slotHours, factorAdicional, esFestivoConcepto = false, tipoFestivoConcepto = null, esBasico = false){
     const vh = parseFloat(valorHora||0);
     const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
+    
+    if(totalHorasConcepto <= 0 && !esBasico) return null;
+    
     let totalPorConcepto = 0;
+    const vlrSlots = [];
 
-    if(concepto==="Auxilio de Transporte"){
-      const vlrSlots = slotHours.map(hoursInSlot => {
+    if(concepto === "Auxilio de Transporte"){
+      const vlrSlotsCalc = slotHours.map(hoursInSlot => {
         if(totalHorasConcepto === 0) return 0;
-        return (hoursInSlot / totalHorasConcepto) * auxValue;
+        return (hoursInSlot / totalHorasConcepto) * auxilioInfo.valor;
       });
-      totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+      totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
       
       const row = {};
       row["Nombre completo"]=nombre;
       row["Empresa"]=empresa;
       row["Puesto"]=puesto;
-      row[" Salario "]=salario? salario : "";
+      row["Salario mensual"]=salario? salario : "";
       row["Valor Hora"]=vh;
       row["Fecha"]=formatDateES(d);
-      row["dia"]=dia;
+      row["Día"]=dia;
+      row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
+      // MEJORADO: Mostrar tipo de festivo
+      if (tipoFestivo) {
+        row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivo);
+      } else if (esFestivo) {
+        row["Tipo Festivo"] = "FLSC (Sin especificar)";
+      }
       row["Concepto"]=concepto;
       row["Observación"]=observacion;
       row["Tipo Observación"]=rules.tipo;
       row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
-      row["No auxilio de transporte"]= noAux ? 1 : "";
+      row["Jornada Incompleta"] = pagoBasicoInfo.esJornadaIncompleta ? "Sí" : "No";
 
       labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
       row["Total Horas"]=round3(totalHorasConcepto);
 
-      labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlots[i]||0));
+      labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlotsCalc[i]||0));
       row["Total por concepto"]=fmtMoney(totalPorConcepto);
 
       row["Valor diario de seguridad social"]=0;
@@ -802,41 +1290,56 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
       row["Total"]=fmtMoney(totalPorConcepto);
       row["Valor Comisión"]=fmtMoney(totalPorConcepto * comisionPct);
       row["Valor Total"]=fmtMoney(totalPorConcepto + (totalPorConcepto * comisionPct));
-      row["Observaciones"]="Auxilio proporcional a horas trabajadas (jornada legal: " + JORNADA_LEGAL_HORAS + "h)";
+      
+      let obsText = auxilioInfo.mensaje;
+      if (esFestivoConcepto) {
+        obsText += " | Festivo";
+        if (tipoFestivoConcepto === "FESTIVO_NO_COMPENSADO") {
+          obsText += " (FLSC - Sin compensar)";
+        } else if (tipoFestivoConcepto === "FESTIVO_COMPENSADO") {
+          obsText += " (FLC - Compensado)";
+        }
+      }
+      row["Observaciones"] = obsText;
 
       return row;
     }
 
-    const vlrSlots = slotHours.map(h=>{
-      if(h<=0) return 0;
-      let mult;
-      if(concepto==="Básico"){
-        mult = 1.0;
-      } else {
-        mult = baseIncluida ? (1.0 + factorAdicional) : factorAdicional;
-      }
-      return h * vh * mult;
-    });
-    totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+    if (esBasico) {
+      const valorHoraUsar = pagoBasicoInfo.esJornadaIncompleta ? 
+        pagoBasicoInfo.valorHoraEfectivo : vh;
+      
+      const vlrSlotsCalc = slotHours.map(h=>{
+        if(h<=0) return 0;
+        return h * valorHoraUsar * factorAdicional;
+      });
+      totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
+    } else {
+      const vlrSlotsCalc = slotHours.map(h=>{
+        if(h<=0) return 0;
+        return h * vh * factorAdicional;
+      });
+      totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
+    }
 
-    const aplicaIBC = true;
-    const ibc = totalPorConcepto;
+    const aplicaIBC = esBasico;
+    const ibc = aplicaIBC ? totalPorConcepto : 0;
 
-    const calcSS = ss.enabled ? {
+    const calcSS = ss.enabled && aplicaIBC ? {
       valor_diario: 0,
-      eps: ibc*ss.eps,
-      afp: ibc*ss.afp,
-      arl: ibc*ss.arl,
-      caja: ibc*ss.caja
+      eps: ibc * ss.eps,
+      afp: ibc * ss.afp,
+      arl: ibc * ss.arl,
+      caja: ibc * ss.caja
     } : {valor_diario:0,eps:0,afp:0,arl:0,caja:0};
 
     const totalSS = (calcSS.eps+calcSS.afp+calcSS.arl+calcSS.caja);
 
-    const calcPrest = prest.enabled ? {
-      ces: ibc*prest.ces,
-      pri: ibc*prest.pri,
-      inte: ibc*prest.inte,
-      vac: ibc*prest.vac
+    const calcPrest = prest.enabled && aplicaIBC ? {
+      ces: ibc * prest.ces,
+      pri: ibc * prest.pri,
+      inte: ibc * prest.inte,
+      vac: ibc * prest.vac
     } : {ces:0,pri:0,inte:0,vac:0};
 
     const totalPrest = (calcPrest.ces+calcPrest.pri+calcPrest.inte+calcPrest.vac);
@@ -849,20 +1352,33 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Nombre completo"]=nombre;
     row["Empresa"]=empresa;
     row["Puesto"]=puesto;
-    row[" Salario "]=salario? salario : "";
+    row["Salario mensual"]=salario? salario : "";
     row["Valor Hora"]=vh;
     row["Fecha"]=formatDateES(d);
-    row["dia"]=dia;
+    row["Día"]=dia;
+    row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
+    // MEJORADO: Mostrar tipo de festivo
+    if (tipoFestivo) {
+      row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivo);
+    } else if (esFestivo) {
+      row["Tipo Festivo"] = "FLSC (Sin especificar)";
+    }
     row["Concepto"]=concepto;
     row["Observación"]=observacion;
     row["Tipo Observación"]=rules.tipo;
     row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
-    row["No auxilio de transporte"]= noAux ? 1 : "";
+    row["Jornada Incompleta"] = pagoBasicoInfo.esJornadaIncompleta ? "Sí" : "No";
 
     labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
     row["Total Horas"]=round3(totalHorasConcepto);
 
-    labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlots[i]||0));
+    labels.forEach((lab,i)=> {
+      if (esBasico && pagoBasicoInfo.esJornadaIncompleta) {
+        row["vlr "+lab.replace("-","-")] = fmtMoney(slotHours[i] * pagoBasicoInfo.valorHoraEfectivo || 0);
+      } else {
+        row["vlr "+lab.replace("-","-")] = fmtMoney(slotHours[i] * vh * factorAdicional || 0);
+      }
+    });
     row["Total por concepto"]=fmtMoney(totalPorConcepto);
 
     row["Valor diario de seguridad social"]=fmtMoney(calcSS.valor_diario||0);
@@ -881,33 +1397,248 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     row["Total"]=fmtMoney(total);
     row["Valor Comisión"]=fmtMoney(valCom);
     row["Valor Total"]=fmtMoney(valTotal);
-    row["Observaciones"]="Jornada legal: " + JORNADA_LEGAL_HORAS + " horas/día";
+    
+    let obsText = "";
+    if (esBasico && pagoBasicoInfo.esJornadaIncompleta) {
+      obsText = "Jornada incompleta: salario completo (valor hora efectivo: " + 
+               fmtCOP(pagoBasicoInfo.valorHoraEfectivo) + ")";
+    } else if (esBasico) {
+      obsText = "Básico por contrato (220 horas mensuales)";
+    }
+    
+    if (esFestivoConcepto && !esBasico) {
+      const nombreFestivo = getNombreFestivo(d);
+      obsText += (obsText ? " | " : "") + "Recargo festivo";
+      if (nombreFestivo) obsText += ": " + nombreFestivo;
+      if (tipoFestivoConcepto === "FESTIVO_NO_COMPENSADO") {
+        obsText += " (FLSC - Sin compensar, 1.80 adicional)";
+      } else if (tipoFestivoConcepto === "FESTIVO_COMPENSADO") {
+        obsText += " (FLC - Compensado, 0.80 adicional)";
+      }
+    }
+    
+    if (!obsText) obsText = "Concepto ordinario";
+    row["Observaciones"] = obsText;
 
     return row;
   }
 
   // Si hay observación pero no es una regla especial que ya procesamos
   if (observacion && rules.tipo !== "NORMAL") {
-    // Ya procesamos las reglas especiales arriba, así que retornamos vacío
     return [];
   }
 
-  // Para días normales (sin observaciones especiales)
+  // Construir todas las filas necesarias
   const rows = [];
-  if(sumArr(basicSlots)>0) rows.push(buildRow("Básico", basicSlots, 0, true));
   
-  if(auxValue>0 && sumArr(auxSlots)>0) rows.push(buildRow("Auxilio de Transporte", auxSlots, 0, false));
+  // ============================================
+  // 3. SIEMPRE AGREGAR BÁSICO (CONTRATO 220 HORAS)
+  // ============================================
+  if(rules.pagoBasico) {
+    if(!esFestivo) {
+      rows.push(buildRow("Básico Ordinario", basicSlots, 1.0, false, null, true));
+    } else {
+      rows.push(buildRow("Básico Ordinario", basicSlots, 1.0, true, tipoFestivo, true));
+    }
+  }
   
-  if(sumArr(noctRecSlots)>0) rows.push(buildRow("Recargo  Nocturno", noctRecSlots, factors.noct, false));
-
-  if(!festivo){
-    if(sumArr(exdSlots)>0) rows.push(buildRow("Hora Extras Diurna", exdSlots, (1.0+factors.exd), true));
-    if(sumArr(exnSlots)>0) rows.push(buildRow("Hora Extra Nocturna", exnSlots, (1.0+factors.exn), true));
+  if(!esFestivo){
+    // DÍA ORDINARIO (no festivo)
+    if(sumArr(noctRecSlots)>0) {
+      const factorNocturno = factors.noct;
+      rows.push(buildRow("Recargo Nocturno Ordinario", noctRecSlots, factorNocturno, false));
+    }
+    
+    if(sumArr(exdSlots)>0) {
+      const factorExd = factors.exd;
+      rows.push(buildRow("Hora Extra Diurna Ordinaria", exdSlots, factorExd, false));
+    }
+    
+    if(sumArr(exnSlots)>0) {
+      const factorExn = factors.exn;
+      rows.push(buildRow("Hora Extra Nocturna Ordinaria", exnSlots, factorExn, false));
+    }
+    
   } else {
-    if(sumArr(festDiurnoSlots)>0) rows.push(buildRow("Festivo Laborado Sin Compensar", festDiurnoSlots, (1.0+factors.fest_d), true));
-    if(sumArr(festNoctSlots)>0) rows.push(buildRow("Recargo Nocturno Festivo", festNoctSlots, (1.0+factors.fest_n), true));
+    // DÍA FESTIVO (domingo o festivo nacional)
+    const esNoCompensado = tipoFestivo === "FESTIVO_NO_COMPENSADO";
+    
+    // Recargo Festivo Compensado Diurno (FLC) - 0.80 adicional
+    if(!esNoCompensado && sumArr(flcDiurnoSlots)>0) {
+      const factorFlcD = factors.flc_d;
+      rows.push(buildRow("Recargo Festivo Diurno (FLC)", flcDiurnoSlots, factorFlcD, true, "FESTIVO_COMPENSADO"));
+    }
+    
+    // Recargo Festivo Compensado Nocturno (FLC) - 1.10 adicional
+    if(!esNoCompensado && sumArr(flcNoctSlots)>0) {
+      const factorFlcN = factors.flc_n;
+      rows.push(buildRow("Recargo Festivo Nocturno (FLC)", flcNoctSlots, factorFlcN, true, "FESTIVO_COMPENSADO"));
+    }
+    
+    // Recargo Festivo Sin Compensar Diurno (FLSC) - 1.80 adicional
+    if(esNoCompensado && sumArr(flscDiurnoSlots)>0) {
+      const factorFlscD = factors.flsc_d;
+      rows.push(buildRow("Recargo Festivo Diurno (FLSC)", flscDiurnoSlots, factorFlscD, true, "FESTIVO_NO_COMPENSADO"));
+    }
+    
+    // Recargo Festivo Sin Compensar Nocturno (FLSC) - 2.10 adicional
+    if(esNoCompensado && sumArr(flscNoctSlots)>0) {
+      const factorFlscN = factors.flsc_n;
+      rows.push(buildRow("Recargo Festivo Nocturno (FLSC)", flscNoctSlots, factorFlscN, true, "FESTIVO_NO_COMPENSADO"));
+    }
+    
+    // Extra en Festivo Diurno (+1.00 adicional al recargo festivo)
+    if(sumArr(festExdSlots)>0) {
+      const factorTotal = factors.fest_exd;
+      rows.push(buildRow("Extra en Festivo Diurno", festExdSlots, factorTotal, true, tipoFestivo));
+    }
+    
+    // Extra en Festivo Nocturno (+1.00 adicional al recargo festivo)
+    if(sumArr(festExnSlots)>0) {
+      const factorTotal = factors.fest_exn;
+      rows.push(buildRow("Extra en Festivo Nocturno", festExnSlots, factorTotal, true, tipoFestivo));
+    }
+  }
+  
+  // AUXILIO DE TRANSPORTE (si corresponde)
+  if(auxilioInfo.valor > 0 && sumArr(auxSlots) > 0) {
+    rows.push(buildRow("Auxilio de Transporte", auxSlots, 0, esFestivo, tipoFestivo));
   }
 
+  return rows;
+}
+
+// =========================
+// NUEVO: Función para procesar día festivo NO laborado
+// =========================
+function procesarDiaFestivoNoLaborado(params) {
+  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, 
+         comisionPct, ss, prest, salarioMinimo, tipoFestivo, esFestivo} = params;
+  
+  const totalHoras = JORNADA_LEGAL_HORAS;
+  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
+  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
+  
+  const nSlots = SLOT_END - SLOT_START;
+  const basicSlots = distribuirHorasEnFranjasLaborales(nSlots, totalHoras, 10, 19);
+  
+  const auxilioInfo = calcularAuxilioTransporte(
+    parseFloat(salario || 0),
+    parseFloat(salarioMinimo || 0),
+    auxTrans * 30,
+    0, // No trabajó horas
+    true,
+    null
+  );
+  
+  const rows = [];
+  
+  // Básico completo
+  rows.push({
+    nombre, empresa, puesto,
+    "Salario mensual": salario ? salario : "",
+    "Valor Hora": valorHora,
+    "Fecha": formatDateES(d),
+    "Día": dia,
+    "Es Festivo": "Sí 🎉",
+    "Tipo Festivo": tipoFestivo ? getEtiquetaFestivo(tipoFestivo) : "FLSC (No laborado)",
+    "Concepto": "Básico Ordinario",
+    "Observación": observacion || "Festivo no laborado",
+    "Tipo Observación": "DIA_FESTIVO_NO_LABORADO",
+    "Jornada Legal": JORNADA_LEGAL_HORAS + " horas",
+    "Jornada Incompleta": "No",
+    "Horario Distribución": "10am-7pm",
+    ...Object.fromEntries(slotLabels().map((lab, i) => [lab, round3(basicSlots[i] || 0)])),
+    "Total Horas": round3(totalHoras),
+    ...Object.fromEntries(slotLabels().map((lab, i) => ["vlr "+lab.replace("-","-"), 
+      fmtMoney((basicSlots[i] / totalHoras) * pagoBasicoInfo.pagoTotal || 0)])),
+    "Total por concepto": fmtMoney(pagoBasicoInfo.pagoTotal),
+    "Valor diario de seguridad social": fmtMoney(0),
+    "EPS": fmtMoney(pagoBasicoInfo.pagoTotal * ss.eps),
+    "AFP": fmtMoney(pagoBasicoInfo.pagoTotal * ss.afp),
+    "ARL": fmtMoney(pagoBasicoInfo.pagoTotal * ss.arl),
+    "CAJA": fmtMoney(pagoBasicoInfo.pagoTotal * ss.caja),
+    "Total Seguridad Social": fmtMoney(pagoBasicoInfo.pagoTotal * (ss.eps + ss.afp + ss.arl + ss.caja)),
+    "CESANTIAS": fmtMoney(pagoBasicoInfo.pagoTotal * prest.ces),
+    "PRIMAS": fmtMoney(pagoBasicoInfo.pagoTotal * prest.pri),
+    "INTERES": fmtMoney(pagoBasicoInfo.pagoTotal * prest.inte),
+    "VACACIONES": fmtMoney(pagoBasicoInfo.pagoTotal * prest.vac),
+    "Total Prestaciones Sociales": fmtMoney(pagoBasicoInfo.pagoTotal * (prest.ces + prest.pri + prest.inte + prest.vac)),
+    "Total": fmtMoney(pagoBasicoInfo.pagoTotal * (1 + (ss.eps + ss.afp + ss.arl + ss.caja) + (prest.ces + prest.pri + prest.inte + prest.vac))),
+    "Valor Comisión": fmtMoney(0),
+    "Valor Total": fmtMoney(pagoBasicoInfo.pagoTotal * (1 + (ss.eps + ss.afp + ss.arl + ss.caja) + (prest.ces + prest.pri + prest.inte + prest.vac))),
+    "Observaciones": "Festivo no laborado - Básico completo distribuido 10am-7pm | " + auxilioInfo.mensaje
+  });
+  
+  return rows;
+}
+
+// =========================
+// Función para procesar día especial
+// =========================
+function procesarDiaEspecial(params) {
+  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
+         comisionPct, ss, prest, salarioMinimo, esFestivo, tipoFestivo} = params;
+  
+  const totalHoras = rules.horasNormales;
+  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
+  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
+  
+  const nSlots = SLOT_END - SLOT_START;
+  let basicSlots, auxSlots;
+  
+  if (rules.horarioEspecial) {
+    basicSlots = distribuirHorasEnFranjasLaborales(nSlots, totalHoras, rules.inicioLaboral, rules.finLaboral);
+    auxSlots = [...basicSlots];
+  } else {
+    const horasPorFranja = totalHoras / nSlots;
+    basicSlots = Array(nSlots).fill(horasPorFranja);
+    auxSlots = Array(nSlots).fill(horasPorFranja);
+  }
+  
+  const auxilioInfo = calcularAuxilioTransporte(
+    parseFloat(salario || 0),
+    parseFloat(salarioMinimo || 0),
+    auxTrans * 30,
+    totalHoras,
+    esFestivo,
+    rules
+  );
+  
+  const rows = [];
+  
+  if (rules.pagoBasico && totalHoras > 0) {
+    rows.push(buildRowSpecial({
+      nombre, empresa, puesto, salario, valorHora, auxTrans: auxilioInfo.valor, 
+      d, dia, observacion, rules, comisionPct, ss, prest,
+      concepto: "Básico",
+      slotHours: basicSlots,
+      incluirAuxilio: false,
+      esBasico: true,
+      esFestivo: false,
+      pagoBasicoCalculado: pagoBasicoInfo,
+      auxilioInfo: auxilioInfo,
+      horarioEspecial: rules.horarioEspecial ? "10am-7pm" : "general",
+      tipoFestivoEspecial: tipoFestivo
+    }));
+  }
+  
+  if (rules.pagoAuxilio && auxilioInfo.valor > 0) {
+    rows.push(buildRowSpecial({
+      nombre, empresa, puesto, salario, valorHora, auxTrans: auxilioInfo.valor, 
+      d, dia, observacion, rules, comisionPct, ss, prest,
+      concepto: "Auxilio de Transporte",
+      slotHours: auxSlots,
+      incluirAuxilio: true,
+      esBasico: false,
+      esFestivo: false,
+      pagoBasicoCalculado: pagoBasicoInfo,
+      auxilioInfo: auxilioInfo,
+      horarioEspecial: rules.horarioEspecial ? "10am-7pm" : "general",
+      tipoFestivoEspecial: tipoFestivo
+    }));
+  }
+  
   return rows;
 }
 
@@ -922,7 +1653,7 @@ function formatDateES(d){
 }
 
 // =========================
-// Parsear tabla pegada (MODIFICADO PARA 6 COLUMNAS)
+// Parsear tabla pegada
 // =========================
 function parsePastedTable(text){
   const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
@@ -931,7 +1662,6 @@ function parsePastedTable(text){
     const cols = line.split(/\t| {2,}|;/).map(x=>x.trim());
     if(cols.length<1) continue;
     
-    // Saltar encabezados
     if(/fecha/i.test(cols[0]) && /entrada/i.test(cols[1])) continue;
 
     const d = parseDateFlexible(cols[0]);
@@ -943,7 +1673,7 @@ function parsePastedTable(text){
       inter1: cols[2]||"",
       inter2: cols[3]||"",
       exit: cols[4]||"",
-      observacion: cols[5]||"" // NUEVA COLUMNA
+      observacion: cols[5]||""
     });
   }
   return out;
@@ -1050,18 +1780,22 @@ document.getElementById("btnCalc").onclick = ()=>{
   const jornada = parseFloat(document.getElementById("jornada").value||8);
   const iniNoct = document.getElementById("iniNoct").value.trim() || "21:00";
   const finNoct = document.getElementById("finNoct").value.trim() || "06:00";
+  const salarioMinimo = document.getElementById("salarioMinimo").value.trim();
   
-  // Mostrar advertencia si la jornada pactada es mayor a la legal
   if (jornada > JORNADA_LEGAL_HORAS) {
-    alert("⚠️ Nota: La jornada pactada (" + jornada + "h) supera la jornada legal máxima de " + JORNADA_LEGAL_HORAS + " horas.\n\nLas horas extras se calcularán después de " + JORNADA_LEGAL_HORAS + " horas diarias.");
+    console.warn("⚠️ Nota: La jornada pactada (" + jornada + "h) supera la jornada legal máxima de " + JORNADA_LEGAL_HORAS + " horas.");
   }
 
   const factors = {
     noct: parseFloat(document.getElementById("f_noct").value||0.35),
     exd:  parseFloat(document.getElementById("f_exd").value||0.25),
     exn:  parseFloat(document.getElementById("f_exn").value||0.75),
-    fest_d: parseFloat(document.getElementById("f_fest_d").value||0.75),
-    fest_n: parseFloat(document.getElementById("f_fest_n").value||1.10),
+    flc_d: parseFloat(document.getElementById("f_flc_d").value||0.80),
+    flc_n: parseFloat(document.getElementById("f_flc_n").value||1.10),
+    flsc_d: parseFloat(document.getElementById("f_flsc_d").value||1.80),
+    flsc_n: parseFloat(document.getElementById("f_flsc_n").value||2.10),
+    fest_exd: parseFloat(document.getElementById("f_fest_exd").value||1.00),
+    fest_exn: parseFloat(document.getElementById("f_fest_exn").value||1.00)
   };
 
   const comisionPct = parseFloat(document.getElementById("comision").value||0)/100;
@@ -1084,9 +1818,42 @@ document.getElementById("btnCalc").onclick = ()=>{
 
   const days = parsePastedTable(document.getElementById("tabla").value);
   const allRows = [];
+  
+  let festivosDetectados = 0;
+  let compensatoriosDetectados = 0;
+  let flcDetectados = 0;
+  let flscDetectados = 0;
+  
+  for(const day of days) {
+    if (esFestivoColombia(day.date)) {
+      festivosDetectados++;
+    }
+    if (day.observacion && day.observacion.toUpperCase().includes("COMPENSATORIO")) {
+      compensatoriosDetectados++;
+    }
+    if (day.observacion && day.observacion.toUpperCase().includes("FLC")) {
+      flcDetectados++;
+    }
+    if (day.observacion && day.observacion.toUpperCase().includes("FLSC")) {
+      flscDetectados++;
+    }
+  }
+  
+  console.log("📊 RESUMEN DETECTADO:");
+  console.log("🎉 Festivos automáticos: " + festivosDetectados + " días");
+  console.log("📅 Compensatorios: " + compensatoriosDetectados + " días");
+  console.log("✅ FLC detectados: " + flcDetectados + " días (0.80 adicional)");
+  console.log("⚠️ FLSC detectados: " + flscDetectados + " días (1.80 adicional)");
+  
+  if (flcDetectados === 0 && flscDetectados === 0 && festivosDetectados > 0) {
+    console.warn("💡 CONSEJO: Para festivos detectados automáticamente, agregar 'FLC' o 'FLSC' en Observaciones.");
+    console.warn("   Ejemplo: 'DOMINGO FLSC' o 'FESTIVO FLC'");
+  }
+
   for(const day of days){
     const rows = calcDayRows({
-      nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct
+      nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,
+      factors,ss,prest,comisionPct,salarioMinimo
     }, day);
     allRows.push(...rows);
   }
@@ -1096,7 +1863,22 @@ document.getElementById("btnCalc").onclick = ()=>{
     const db = b["Fecha"].split("/").reverse().join("-");
     if(da<db) return -1;
     if(da>db) return 1;
-    return (a["Concepto"]||"").localeCompare(b["Concepto"]||"");
+    const ordenConcepto = {
+      "Básico Ordinario": 1,
+      "Auxilio de Transporte": 2,
+      "Recargo Nocturno Ordinario": 3,
+      "Hora Extra Diurna Ordinaria": 4,
+      "Hora Extra Nocturna Ordinaria": 5,
+      "Recargo Festivo Diurno (FLC)": 6,
+      "Recargo Festivo Nocturno (FLC)": 7,
+      "Recargo Festivo Diurno (FLSC)": 8,
+      "Recargo Festivo Nocturno (FLSC)": 9,
+      "Extra en Festivo Diurno": 10,
+      "Extra en Festivo Nocturno": 11
+    };
+    const ordenA = ordenConcepto[a["Concepto"]] || 99;
+    const ordenB = ordenConcepto[b["Concepto"]] || 99;
+    return ordenA - ordenB;
   });
 
   OUTPUT_ROWS = allRows;
@@ -1113,7 +1895,7 @@ document.getElementById("btnXlsx").onclick = ()=>{
     alert("Primero calcula para generar el archivo.");
     return;
   }
-  exportToExcel(OUTPUT_ROWS, "nomina_por_horas_7_33h.xlsx");
+  exportToExcel(OUTPUT_ROWS, "nomina_por_horas_festivos.xlsx");
 };
 
 document.getElementById("btnCSV").onclick = ()=>{
@@ -1121,14 +1903,18 @@ document.getElementById("btnCSV").onclick = ()=>{
     alert("Primero calcula para generar el archivo.");
     return;
   }
-  exportToCSV(OUTPUT_ROWS, "nomina_por_horas_7_33h.csv");
+  exportToCSV(OUTPUT_ROWS, "nomina_por_horas_festivos.csv");
 };
 
 // Inicialización
 renderPreview([]);
 
-// Mostrar jornada legal en consola para referencia
-console.log("✅ Jornada legal configurada: " + JORNADA_LEGAL_HORAS + " horas (" + JORNADA_LEGAL_MINUTOS + " minutos)");
+console.log("✅ SISTEMA DE FESTIVOS MEJORADO:");
+console.log("   - FLC (Festivo Laborado Compensado): 0.80 adicional - Se da día libre");
+console.log("   - FLSC (Festivo Laborado Sin Compensar): 1.80 adicional - No se da día libre");
+console.log("   - Festivos automáticos = FLSC por defecto (1.80)");
+console.log("   - Especificar en Observaciones: 'FLC' o 'FLSC'");
+console.log("   - Ejemplo: 'DOMINGO FLSC' o 'FESTIVO FLC'");
 </script>
 </body>
 </html>
