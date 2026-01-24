@@ -508,7 +508,7 @@ function getTipoFestivo(observacion, fecha) {
 }
 
 // =========================
-// Utilidades de tiempo
+// Utilidades de tiempo - CORREGIDAS
 // =========================
 function parseDateFlexible(s){
   if(!s) return null;
@@ -558,7 +558,8 @@ function toDateTime(d, t){
 }
 
 function minutesBetween(a,b){
-  return Math.max(0, Math.round((b - a) / 60000));
+  // Calcular DIFERENCIA EXACTA en minutos (sin redondear)
+  return Math.max(0, (b - a) / 60000);
 }
 
 function dayNameES(d){
@@ -599,22 +600,49 @@ function slotLabels(){
   return labels;
 }
 
+// =========================
+// CORREGIDA: slotIndexForMinute - maneja horas después de medianoche
+// =========================
 function slotIndexForMinute(minFromDayStart){
-  const base = SLOT_START*60;
-  const idx = Math.floor((minFromDayStart - base)/60);
-  if(idx<0 || idx>= (SLOT_END-SLOT_START)) return -1;
+  // Ajustar minutos para que funcionen correctamente después de medianoche
+  let adjustedMin = minFromDayStart;
+  
+  // Si son minutos del día anterior (después de medianoche pero antes de las 7am)
+  if (minFromDayStart < SLOT_START * 60) {
+    adjustedMin = minFromDayStart + 1440; // Sumar un día completo en minutos
+  }
+  
+  const base = SLOT_START * 60; // 7*60 = 420
+  const idx = Math.floor((adjustedMin - base) / 60);
+  
+  // Verificar que el índice esté en el rango válido (0 a 17 para franjas 7-25)
+  if (idx < 0 || idx >= (SLOT_END - SLOT_START)) {
+    console.warn(`⚠️ Índice fuera de rango: minFromDayStart=${minFromDayStart}, adjustedMin=${adjustedMin}, idx=${idx}`);
+    return -1;
+  }
+  
   return idx;
 }
 
 // =========================
 // Clasificación diurna/nocturna
 // =========================
+// =========================
+// CORREGIDA: Clasificación diurna/nocturna
+// =========================
 function isNocturna(minFromMid, iniNoctMin, finNoctMin){
-  const mod = ((minFromMid%1440)+1440)%1440;
+  // Asegurar que minFromMid esté en el rango 0-1439
+  let adjustedMin = minFromMid % 1440;
+  if (adjustedMin < 0) adjustedMin += 1440;
+  
+  // Para franjas nocturnas que cruzan medianoche (ej: 21:00 a 6:00)
   if(iniNoctMin < finNoctMin){
-    return (mod>=iniNoctMin && mod<finNoctMin);
+    // No cruza medianoche (ej: 21:00 a 6:00 no aplica aquí)
+    return (adjustedMin >= iniNoctMin && adjustedMin < finNoctMin);
+  } else {
+    // Cruza medianoche (ej: 21:00 a 6:00)
+    return (adjustedMin >= iniNoctMin || adjustedMin < finNoctMin);
   }
-  return (mod>=iniNoctMin || mod<finNoctMin);
 }
 
 // =========================
@@ -761,7 +789,10 @@ function calcularPagoBasico(horasTrabajadas, valorHora, salarioDiario) {
 }
 
 // =========================
-// DISTRIBUCIÓN DE HORAS REALES - FUNCIÓN CORREGIDA
+// DISTRIBUCIÓN DE HORAS REALES - VERSIÓN CORREGIDA (MINUTOS EXACTOS)
+// =========================
+// =========================
+// DISTRIBUCIÓN DE HORAS REALES - VERSIÓN CORREGIDA (MINUTOS EXACTOS)
 // =========================
 function calcularHorasRealesPorFranja(intervals, d, iniNoctMin, finNoctMin) {
   const nSlots = SLOT_END - SLOT_START;
@@ -770,26 +801,53 @@ function calcularHorasRealesPorFranja(intervals, d, iniNoctMin, finNoctMin) {
   const slotsExtrasDiurnas = Array(nSlots).fill(0);
   const slotsExtrasNocturnas = Array(nSlots).fill(0);
   
-  // Contadores de minutos
+  // Contadores de minutos EXACTOS
   let minutosOrdinariosRestantes = JORNADA_LEGAL_MINUTOS; // 440 min = 7.33h
   let minutosTrabajados = 0;
   
+  console.log(`🔍 Iniciando cálculo para ${formatDateES(d)}`);
+  console.log(`   Minutos ordinarios disponibles: ${minutosOrdinariosRestantes} min (${JORNADA_LEGAL_HORAS}h)`);
+  
   // Recorrer cada intervalo de trabajo
   for (const [inicio, fin] of intervals) {
+    const duracionIntervalo = Math.round((fin - inicio) / 60000); // minutos exactos
+    console.log(`   Intervalo: ${inicio.toLocaleTimeString()} a ${fin.toLocaleTimeString()} = ${duracionIntervalo} min`);
+    
     let tiempoActual = new Date(inicio);
     
     while (tiempoActual < fin) {
       minutosTrabajados++;
       
-      // Calcular franja horaria
+      // Calcular franja horaria EXACTA
       const baseDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
       let minFromMid = (tiempoActual - baseDay) / 60000;
-      if (tiempoActual.getDate() !== d.getDate()) {
-        minFromMid += 1440; // Día siguiente
+      
+      // Ajustar si es día siguiente (para cálculo de franja)
+      const esDiaSiguiente = tiempoActual.getDate() !== d.getDate() || 
+                             tiempoActual.getMonth() !== d.getMonth() || 
+                             tiempoActual.getFullYear() !== d.getFullYear();
+      
+      // Para cálculo de franja: mantener en rango 0-1439
+      let minFromMidParaFranja = minFromMid % 1440;
+      if (minFromMidParaFranja < 0) minFromMidParaFranja += 1440;
+      
+      const idx = slotIndexForMinute(minFromMidParaFranja);
+      
+      // Para cálculo de nocturno: mantener el valor original (puede ser > 1440)
+      let minFromMidParaNocturno = minFromMid;
+      if (esDiaSiguiente) {
+        minFromMidParaNocturno += 1440; // Sumar un día para cálculo de nocturno
       }
       
-      const idx = slotIndexForMinute(minFromMid);
-      const esNocturna = isNocturna(minFromMid, iniNoctMin, finNoctMin);
+      const esNocturna = isNocturna(minFromMidParaNocturno, iniNoctMin, finNoctMin);
+      
+      // DEBUG: Mostrar tiempos problemáticos (después de medianoche)
+      if (tiempoActual.getHours() === 0 && tiempoActual.getMinutes() <= 30) {
+        console.log(`🔍 Hora madrugada: ${tiempoActual.toLocaleTimeString()}, 
+                    minFromMidParaFranja=${minFromMidParaFranja}, 
+                    idx=${idx}, 
+                    esNocturna=${esNocturna}`);
+      }
       
       if (idx >= 0) {
         if (minutosOrdinariosRestantes > 0) {
@@ -807,21 +865,109 @@ function calcularHorasRealesPorFranja(intervals, d, iniNoctMin, finNoctMin) {
             slotsExtrasDiurnas[idx] += 1/60;
           }
         }
+      } else if (tiempoActual.getHours() >= 0 && tiempoActual.getHours() < 7) {
+        console.warn(`   ⚠️ Minuto fuera de rango (madrugada): ${tiempoActual.toLocaleTimeString()}, 
+                      minFromMidParaFranja=${minFromMidParaFranja}, idx=${idx}`);
       }
       
-      // Avanzar 1 minuto
+      // Avanzar 1 minuto EXACTO
       tiempoActual = new Date(tiempoActual.getTime() + 60000);
     }
   }
+  
+  // Calcular totales EXACTOS
+  const totalHoras = minutosTrabajados / 60;
+  const horasOrdinarias = (JORNADA_LEGAL_MINUTOS - Math.max(0, minutosOrdinariosRestantes)) / 60;
+  const horasExtras = Math.max(0, minutosTrabajados - JORNADA_LEGAL_MINUTOS) / 60;
+  
+  console.log(`📊 RESULTADO para ${formatDateES(d)}:`);
+  console.log(`   Total trabajado: ${minutosTrabajados} min = ${totalHoras.toFixed(2)}h`);
+  console.log(`   Horas ordinarias: ${horasOrdinarias.toFixed(2)}h`);
+  console.log(`   Horas extras: ${horasExtras.toFixed(2)}h`);
+  console.log(`   Básico en franjas: ${sumArr(slotsBasicas).toFixed(2)}h`);
+  console.log(`   Nocturno en franjas: ${sumArr(slotsNocturnas).toFixed(2)}h`);
+  console.log(`   Extras diurnas: ${sumArr(slotsExtrasDiurnas).toFixed(2)}h`);
+  console.log(`   Extras nocturnas: ${sumArr(slotsExtrasNocturnas).toFixed(2)}h`);
   
   return {
     basicas: slotsBasicas,
     nocturnas: slotsNocturnas,
     extrasDiurnas: slotsExtrasDiurnas,
     extrasNocturnas: slotsExtrasNocturnas,
-    totalHoras: minutosTrabajados / 60,
-    horasOrdinarias: (JORNADA_LEGAL_MINUTOS - Math.max(0, minutosOrdinariosRestantes)) / 60,
-    horasExtras: Math.max(0, minutosTrabajados - JORNADA_LEGAL_MINUTOS) / 60
+    totalHoras: totalHoras,
+    horasOrdinarias: horasOrdinarias,
+    horasExtras: horasExtras
+  };
+}
+
+// =========================
+// NUEVA: Calcular distribución para festivos (MINUTOS EXACTOS)
+// =========================
+function calcularDistribucionFestivo(intervals, d, iniNoctMin, finNoctMin, tipoFestivo) {
+  const nSlots = SLOT_END - SLOT_START;
+  const diurnas = Array(nSlots).fill(0);
+  const nocturnas = Array(nSlots).fill(0);
+  const extrasDiurnas = Array(nSlots).fill(0);
+  const extrasNocturnas = Array(nSlots).fill(0);
+  
+  let minutosTrabajados = 0;
+  const limiteExtras = 8 * 60; // Considerar extras después de 8h en festivo
+  
+  console.log(`🎉 Cálculo FESTIVO para ${formatDateES(d)} (${tipoFestivo})`);
+  
+  for (const [inicio, fin] of intervals) {
+    const duracionIntervalo = Math.round((fin - inicio) / 60000);
+    console.log(`   Intervalo festivo: ${inicio.toLocaleTimeString()} a ${fin.toLocaleTimeString()} = ${duracionIntervalo} min`);
+    
+    let tiempoActual = new Date(inicio);
+    
+    while (tiempoActual < fin) {
+      minutosTrabajados++;
+      
+      const baseDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      let minFromMid = (tiempoActual - baseDay) / 60000;
+      if (tiempoActual.getDate() !== d.getDate()) {
+        minFromMid += 1440;
+      }
+      
+      const idx = slotIndexForMinute(minFromMid);
+      const esNocturna = isNocturna(minFromMid, iniNoctMin, finNoctMin);
+      
+      if (idx >= 0) {
+        if (minutosTrabajados <= limiteExtras) {
+          // Horas ordinarias festivas
+          if (esNocturna) {
+            nocturnas[idx] += 1/60;
+          } else {
+            diurnas[idx] += 1/60;
+          }
+        } else {
+          // Horas extras festivas
+          if (esNocturna) {
+            extrasNocturnas[idx] += 1/60;
+          } else {
+            extrasDiurnas[idx] += 1/60;
+          }
+        }
+      }
+      
+      tiempoActual = new Date(tiempoActual.getTime() + 60000);
+    }
+  }
+  
+  console.log(`📊 RESULTADO FESTIVO ${formatDateES(d)}:`);
+  console.log(`   Total: ${minutosTrabajados} min = ${(minutosTrabajados/60).toFixed(2)}h`);
+  console.log(`   Ordinarias diurnas: ${sumArr(diurnas).toFixed(2)}h`);
+  console.log(`   Ordinarias nocturnas: ${sumArr(nocturnas).toFixed(2)}h`);
+  console.log(`   Extras diurnas: ${sumArr(extrasDiurnas).toFixed(2)}h`);
+  console.log(`   Extras nocturnas: ${sumArr(extrasNocturnas).toFixed(2)}h`);
+  
+  return {
+    diurnas,
+    nocturnas,
+    extrasDiurnas,
+    extrasNocturnas,
+    totalHoras: minutosTrabajados / 60
   };
 }
 
@@ -911,65 +1057,6 @@ function calcularAuxilioTransporte(salarioMensual, salarioMinimoMensual, auxilio
     valor: 0,
     mensaje: "No trabajó, no hay auxilio",
     auxilioCompleto: false
-  };
-}
-
-// =========================
-// NUEVA: Calcular distribución para festivos
-// =========================
-function calcularDistribucionFestivo(intervals, d, iniNoctMin, finNoctMin, tipoFestivo) {
-  const nSlots = SLOT_END - SLOT_START;
-  const diurnas = Array(nSlots).fill(0);
-  const nocturnas = Array(nSlots).fill(0);
-  const extrasDiurnas = Array(nSlots).fill(0);
-  const extrasNocturnas = Array(nSlots).fill(0);
-  
-  let minutosTrabajados = 0;
-  const limiteExtras = 8 * 60; // Considerar extras después de 8h en festivo
-  
-  for (const [inicio, fin] of intervals) {
-    let tiempoActual = new Date(inicio);
-    
-    while (tiempoActual < fin) {
-      minutosTrabajados++;
-      
-      const baseDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-      let minFromMid = (tiempoActual - baseDay) / 60000;
-      if (tiempoActual.getDate() !== d.getDate()) {
-        minFromMid += 1440;
-      }
-      
-      const idx = slotIndexForMinute(minFromMid);
-      const esNocturna = isNocturna(minFromMid, iniNoctMin, finNoctMin);
-      
-      if (idx >= 0) {
-        if (minutosTrabajados <= limiteExtras) {
-          // Horas ordinarias festivas
-          if (esNocturna) {
-            nocturnas[idx] += 1/60;
-          } else {
-            diurnas[idx] += 1/60;
-          }
-        } else {
-          // Horas extras festivas
-          if (esNocturna) {
-            extrasNocturnas[idx] += 1/60;
-          } else {
-            extrasDiurnas[idx] += 1/60;
-          }
-        }
-      }
-      
-      tiempoActual = new Date(tiempoActual.getTime() + 60000);
-    }
-  }
-  
-  return {
-    diurnas,
-    nocturnas,
-    extrasDiurnas,
-    extrasNocturnas,
-    totalHoras: minutosTrabajados / 60
   };
 }
 
@@ -1439,7 +1526,7 @@ function procesarDiaEspecial(params) {
 }
 
 // =========================
-// FUNCIÓN PRINCIPAL CORREGIDA - calcDayRows
+// FUNCIÓN PRINCIPAL CORREGIDA - calcDayRows (CON MINUTOS EXACTOS)
 // =========================
 function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct,salarioMinimo}, day){
   const d = day.date;
@@ -1486,7 +1573,7 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     return [];
   }
   
-  // Calcular intervalos reales
+  // Calcular intervalos reales CON MINUTOS EXACTOS
   const intervals = [];
   const tI1 = parseTime12or24(day.inter1);
   const tI2 = parseTime12or24(day.inter2);
@@ -1496,22 +1583,35 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     const b1 = toDateTime(d, tI1);
     const a2 = toDateTime(d, tI2);
     let b2 = toDateTime(d, tOut);
-    if (b2 < a2) b2 = new Date(b2.getTime() + 24 * 60 * 60000);
+    
+    // Ajustar si la salida es del día siguiente
+    if (b2 < a2) b2 = new Date(b2.getTime() + 24*60*60000);
+    
     let bb1 = b1;
-    if (bb1 < a1) bb1 = new Date(bb1.getTime() + 24 * 60 * 60000);
+    if (bb1 < a1) bb1 = new Date(bb1.getTime() + 24*60*60000);
+    
+    console.log(`⏰ Intervalos para ${formatDateES(d)}:`);
+    console.log(`   Bloque 1: ${a1.toLocaleTimeString()} - ${bb1.toLocaleTimeString()} = ${minutesBetween(a1, bb1).toFixed(2)} min`);
+    console.log(`   Bloque 2: ${a2.toLocaleTimeString()} - ${b2.toLocaleTimeString()} = ${minutesBetween(a2, b2).toFixed(2)} min`);
+    console.log(`   Total: ${(minutesBetween(a1, bb1) + minutesBetween(a2, b2)).toFixed(2)} min`);
+    
     intervals.push([a1, bb1]);
     intervals.push([a2, b2]);
   } else {
     const a = toDateTime(d, tIn);
     let b = toDateTime(d, tOut);
-    if (b < a) b = new Date(b.getTime() + 24 * 60 * 60000);
+    if (b < a) b = new Date(b.getTime() + 24*60*60000);
+    
+    console.log(`⏰ Intervalo único para ${formatDateES(d)}:`);
+    console.log(`   ${a.toLocaleTimeString()} - ${b.toLocaleTimeString()} = ${minutesBetween(a, b).toFixed(2)} min`);
+    
     intervals.push([a, b]);
   }
   
   const iniNoctMin = hhmmToMin(iniNoct);
   const finNoctMin = hhmmToMin(finNoct);
   
-  // Calcular distribución real por franjas
+  // Calcular distribución real por franjas (CON MINUTOS EXACTOS)
   const distribucion = calcularHorasRealesPorFranja(intervals, d, iniNoctMin, finNoctMin);
   
   const totalHoras = distribucion.totalHoras;
@@ -1979,5 +2079,6 @@ console.log("   - Ejemplo: 'DOMINGO FLSC' o 'FESTIVO FLC'");
 </script>
 </body>
 </html>
+
 
 
