@@ -888,6 +888,471 @@ function calcularAuxilioTransporte(salarioMensual, salarioMinimoMensual, auxilio
 }
 
 // =========================
+// Funciones auxiliares
+// =========================
+function sumArr(a){ return a.reduce((x,y)=>x+y,0); }
+function round3(n){ return Math.round(n*1000)/1000; }
+function fmtMoney(n){ return Math.round(n); }
+function formatDateES(d){
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+// =========================
+// Función buildRowSpecial (CORREGIDA)
+// =========================
+function buildRowSpecial(params){
+  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
+         comisionPct, ss, prest, concepto, slotHours, incluirAuxilio, esBasico, esFestivo, 
+         pagoBasicoCalculado, auxilioInfo, horarioEspecial, tipoFestivoEspecial} = params;
+  
+  const vh = parseFloat(valorHora||0);
+  const labels = slotLabels();
+  const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
+  let totalPorConcepto = 0;
+  const vlrSlots = [];
+
+  if (incluirAuxilio) {
+    for (let i = 0; i < slotHours.length; i++) {
+      const horasInSlot = slotHours[i];
+      if (totalHorasConcepto === 0) {
+        vlrSlots.push(0);
+      } else {
+        vlrSlots.push((horasInSlot / totalHorasConcepto) * auxilioInfo.valor);
+      }
+    }
+    totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+  } else if (esBasico) {
+    for (let i = 0; i < slotHours.length; i++) {
+      vlrSlots.push((slotHours[i] / totalHorasConcepto) * pagoBasicoCalculado.pagoTotal);
+    }
+    totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
+  }
+
+  const row = {};
+  row["Nombre completo"] = nombre;
+  row["Empresa"] = empresa;
+  row["Puesto"] = puesto;
+  row["Salario mensual"] = salario ? salario : "";
+  row["Valor Hora"] = vh;
+  row["Fecha"] = formatDateES(d);
+  row["Día"] = dia;
+  row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
+  // MEJORADO: Mostrar tipo de festivo claramente
+  if (tipoFestivoEspecial) {
+    row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivoEspecial);
+  } else if (esFestivo) {
+    row["Tipo Festivo"] = "FLSC (Sin especificar)";
+  }
+  row["Concepto"] = concepto;
+  row["Observación"] = observacion;
+  row["Tipo Observación"] = rules.tipo;
+  row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
+  row["Jornada Incompleta"] = pagoBasicoCalculado.esJornadaIncompleta ? "Sí" : "No";
+  if (horarioEspecial) {
+    row["Horario Distribución"] = horarioEspecial;
+  }
+
+  labels.forEach((lab,i) => row[lab] = round3(slotHours[i] || 0));
+  row["Total Horas"] = round3(totalHorasConcepto);
+
+  labels.forEach((lab,i) => row["vlr "+lab.replace("-","-")] = fmtMoney(vlrSlots[i] || 0));
+  row["Total por concepto"] = fmtMoney(totalPorConcepto);
+
+  const ibc = esBasico ? totalPorConcepto : 0;
+  
+  const calcSS = ss.enabled && esBasico ? {
+    valor_diario: 0,
+    eps: ibc * ss.eps,
+    afp: ibc * ss.afp,
+    arl: ibc * ss.arl,
+    caja: ibc * ss.caja
+  } : {valor_diario:0, eps:0, afp:0, arl:0, caja:0};
+
+  const totalSS = (calcSS.eps + calcSS.afp + calcSS.arl + calcSS.caja);
+
+  const calcPrest = prest.enabled && esBasico ? {
+    ces: ibc * prest.ces,
+    pri: ibc * prest.pri,
+    inte: ibc * prest.inte,
+    vac: ibc * prest.vac
+  } : {ces:0, pri:0, inte:0, vac:0};
+
+  const totalPrest = (calcPrest.ces + calcPrest.pri + calcPrest.inte + calcPrest.vac);
+
+  const total = totalPorConcepto + totalSS + totalPrest;
+  const valCom = total * comisionPct;
+  const valTotal = total + valCom;
+
+  row["Valor diario de seguridad social"] = fmtMoney(calcSS.valor_diario || 0);
+  row["EPS"] = fmtMoney(calcSS.eps || 0);
+  row["AFP"] = fmtMoney(calcSS.afp || 0);
+  row["ARL"] = fmtMoney(calcSS.arl || 0);
+  row["CAJA"] = fmtMoney(calcSS.caja || 0);
+  row["Total Seguridad Social"] = fmtMoney(totalSS);
+
+  row["CESANTIAS"] = fmtMoney(calcPrest.ces || 0);
+  row["PRIMAS"] = fmtMoney(calcPrest.pri || 0);
+  row["INTERES"] = fmtMoney(calcPrest.inte || 0);
+  row["VACACIONES"] = fmtMoney(calcPrest.vac || 0);
+  row["Total Prestaciones Sociales"] = fmtMoney(totalPrest);
+
+  row["Total"] = fmtMoney(total);
+  row["Valor Comisión"] = fmtMoney(valCom);
+  row["Valor Total"] = fmtMoney(valTotal);
+  
+  let observacionMsg = pagoBasicoCalculado.mensaje;
+  if (horarioEspecial === "10am-7pm") {
+    observacionMsg += " | Distribuido en horario 10am-7pm (9 franjas)";
+  }
+  if (tipoFestivoEspecial) {
+    const etiqueta = getEtiquetaFestivo(tipoFestivoEspecial);
+    observacionMsg += " | " + etiqueta;
+  }
+  if (auxilioInfo) {
+    observacionMsg += " | " + auxilioInfo.mensaje;
+  }
+  row["Observaciones"] = observacionMsg;
+
+  return row;
+}
+
+// =========================
+// Función buildRow (CORREGIDA)
+// =========================
+function buildRow(params) {
+  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
+         comisionPct, ss, prest, concepto, slotHours, factorAdicional, esFestivoConcepto, 
+         tipoFestivoConcepto, esBasico, pagoBasicoInfo, auxilioInfo} = params;
+  
+  const vh = parseFloat(valorHora||0);
+  const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
+  
+  if(totalHorasConcepto <= 0 && !esBasico) return null;
+  
+  let totalPorConcepto = 0;
+  const vlrSlots = [];
+
+  if(concepto === "Auxilio de Transporte"){
+    const vlrSlotsCalc = slotHours.map(hoursInSlot => {
+      if(totalHorasConcepto === 0) return 0;
+      return (hoursInSlot / totalHorasConcepto) * auxilioInfo.valor;
+    });
+    totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
+    
+    const row = {};
+    row["Nombre completo"]=nombre;
+    row["Empresa"]=empresa;
+    row["Puesto"]=puesto;
+    row["Salario mensual"]=salario? salario : "";
+    row["Valor Hora"]=vh;
+    row["Fecha"]=formatDateES(d);
+    row["Día"]=dia;
+    row["Es Festivo"] = esFestivoConcepto ? "Sí 🎉" : "No";
+    if (tipoFestivoConcepto) {
+      row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivoConcepto);
+    } else if (esFestivoConcepto) {
+      row["Tipo Festivo"] = "FLSC (Sin especificar)";
+    }
+    row["Concepto"]=concepto;
+    row["Observación"]=observacion;
+    row["Tipo Observación"]=rules.tipo;
+    row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
+    row["Jornada Incompleta"] = pagoBasicoInfo.esJornadaIncompleta ? "Sí" : "No";
+
+    const labels = slotLabels();
+    labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
+    row["Total Horas"]=round3(totalHorasConcepto);
+
+    labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlotsCalc[i]||0));
+    row["Total por concepto"]=fmtMoney(totalPorConcepto);
+
+    row["Valor diario de seguridad social"]=0;
+    row["EPS"]=0;
+    row["AFP"]=0;
+    row["ARL"]=0;
+    row["CAJA"]=0;
+    row["Total Seguridad Social"]=0;
+
+    row["CESANTIAS"]=0;
+    row["PRIMAS"]=0;
+    row["INTERES"]=0;
+    row["VACACIONES"]=0;
+    row["Total Prestaciones Sociales"]=0;
+
+    row["Total"]=fmtMoney(totalPorConcepto);
+    row["Valor Comisión"]=fmtMoney(totalPorConcepto * comisionPct);
+    row["Valor Total"]=fmtMoney(totalPorConcepto + (totalPorConcepto * comisionPct));
+    
+    let obsText = auxilioInfo.mensaje;
+    if (esFestivoConcepto) {
+      obsText += " | Festivo";
+      if (tipoFestivoConcepto === "FESTIVO_NO_COMPENSADO") {
+        obsText += " (FLSC - Sin compensar)";
+      } else if (tipoFestivoConcepto === "FESTIVO_COMPENSADO") {
+        obsText += " (FLC - Compensado)";
+      }
+    }
+    row["Observaciones"] = obsText;
+
+    return row;
+  }
+
+  if (esBasico) {
+    const valorHoraUsar = pagoBasicoInfo.esJornadaIncompleta ? 
+      pagoBasicoInfo.valorHoraEfectivo : vh;
+    
+    const vlrSlotsCalc = slotHours.map(h=>{
+      if(h<=0) return 0;
+      return h * valorHoraUsar * factorAdicional;
+    });
+    totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
+  } else {
+    const vlrSlotsCalc = slotHours.map(h=>{
+      if(h<=0) return 0;
+      return h * vh * factorAdicional;
+    });
+    totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
+  }
+
+  const aplicaIBC = esBasico;
+  const ibc = aplicaIBC ? totalPorConcepto : 0;
+
+  const calcSS = ss.enabled && aplicaIBC ? {
+    valor_diario: 0,
+    eps: ibc * ss.eps,
+    afp: ibc * ss.afp,
+    arl: ibc * ss.arl,
+    caja: ibc * ss.caja
+  } : {valor_diario:0,eps:0,afp:0,arl:0,caja:0};
+
+  const totalSS = (calcSS.eps+calcSS.afp+calcSS.arl+calcSS.caja);
+
+  const calcPrest = prest.enabled && aplicaIBC ? {
+    ces: ibc * prest.ces,
+    pri: ibc * prest.pri,
+    inte: ibc * prest.inte,
+    vac: ibc * prest.vac
+  } : {ces:0,pri:0,inte:0,vac:0};
+
+  const totalPrest = (calcPrest.ces+calcPrest.pri+calcPrest.inte+calcPrest.vac);
+
+  const total = totalPorConcepto + totalSS + totalPrest;
+  const valCom = total * comisionPct;
+  const valTotal = total + valCom;
+
+  const row = {};
+  row["Nombre completo"]=nombre;
+  row["Empresa"]=empresa;
+  row["Puesto"]=puesto;
+  row["Salario mensual"]=salario? salario : "";
+  row["Valor Hora"]=vh;
+  row["Fecha"]=formatDateES(d);
+  row["Día"]=dia;
+  row["Es Festivo"] = esFestivoConcepto ? "Sí 🎉" : "No";
+  if (tipoFestivoConcepto) {
+    row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivoConcepto);
+  } else if (esFestivoConcepto) {
+    row["Tipo Festivo"] = "FLSC (Sin especificar)";
+  }
+  row["Concepto"]=concepto;
+  row["Observación"]=observacion;
+  row["Tipo Observación"]=rules.tipo;
+  row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
+  row["Jornada Incompleta"] = pagoBasicoInfo.esJornadaIncompleta ? "Sí" : "No";
+
+  const labels = slotLabels();
+  labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
+  row["Total Horas"]=round3(totalHorasConcepto);
+
+  labels.forEach((lab,i)=> {
+    if (esBasico && pagoBasicoInfo.esJornadaIncompleta) {
+      row["vlr "+lab.replace("-","-")] = fmtMoney(slotHours[i] * pagoBasicoInfo.valorHoraEfectivo || 0);
+    } else {
+      row["vlr "+lab.replace("-","-")] = fmtMoney(slotHours[i] * vh * factorAdicional || 0);
+    }
+  });
+  row["Total por concepto"]=fmtMoney(totalPorConcepto);
+
+  row["Valor diario de seguridad social"]=fmtMoney(calcSS.valor_diario||0);
+  row["EPS"]=fmtMoney(calcSS.eps||0);
+  row["AFP"]=fmtMoney(calcSS.afp||0);
+  row["ARL"]=fmtMoney(calcSS.arl||0);
+  row["CAJA"]=fmtMoney(calcSS.caja||0);
+  row["Total Seguridad Social"]=fmtMoney(totalSS);
+
+  row["CESANTIAS"]=fmtMoney(calcPrest.ces||0);
+  row["PRIMAS"]=fmtMoney(calcPrest.pri||0);
+  row["INTERES"]=fmtMoney(calcPrest.inte||0);
+  row["VACACIONES"]=fmtMoney(calcPrest.vac||0);
+  row["Total Prestaciones Sociales"]=fmtMoney(totalPrest);
+
+  row["Total"]=fmtMoney(total);
+  row["Valor Comisión"]=fmtMoney(valCom);
+  row["Valor Total"]=fmtMoney(valTotal);
+  
+  let obsText = "";
+  if (esBasico && pagoBasicoInfo.esJornadaIncompleta) {
+    obsText = "Jornada incompleta: salario completo (valor hora efectivo: " + 
+             fmtCOP(pagoBasicoInfo.valorHoraEfectivo) + ")";
+  } else if (esBasico) {
+    obsText = "Básico por contrato (220 horas mensuales)";
+  }
+  
+  if (esFestivoConcepto && !esBasico) {
+    const nombreFestivo = getNombreFestivo(d);
+    obsText += (obsText ? " | " : "") + "Recargo festivo";
+    if (nombreFestivo) obsText += ": " + nombreFestivo;
+    if (tipoFestivoConcepto === "FESTIVO_NO_COMPENSADO") {
+      obsText += " (FLSC - Sin compensar, 1.80 adicional)";
+    } else if (tipoFestivoConcepto === "FESTIVO_COMPENSADO") {
+      obsText += " (FLC - Compensado, 0.80 adicional)";
+    }
+  }
+  
+  if (!obsText) obsText = "Concepto ordinario";
+  row["Observaciones"] = obsText;
+
+  return row;
+}
+
+// =========================
+// NUEVO: Función para procesar día festivo NO laborado
+// =========================
+function procesarDiaFestivoNoLaborado(params) {
+  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, 
+         comisionPct, ss, prest, salarioMinimo, tipoFestivo, esFestivo} = params;
+  
+  const totalHoras = JORNADA_LEGAL_HORAS;
+  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
+  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
+  
+  const nSlots = SLOT_END - SLOT_START;
+  const basicSlots = distribuirHorasEnFranjasLaborales(nSlots, totalHoras, 10, 19);
+  
+  const auxilioInfo = calcularAuxilioTransporte(
+    parseFloat(salario || 0),
+    parseFloat(salarioMinimo || 0),
+    auxTrans * 30,
+    0, // No trabajó horas
+    true,
+    null
+  );
+  
+  const rows = [];
+  
+  // Básico completo
+  rows.push({
+    nombre, empresa, puesto,
+    "Salario mensual": salario ? salario : "",
+    "Valor Hora": valorHora,
+    "Fecha": formatDateES(d),
+    "Día": dia,
+    "Es Festivo": "Sí 🎉",
+    "Tipo Festivo": tipoFestivo ? getEtiquetaFestivo(tipoFestivo) : "FLSC (No laborado)",
+    "Concepto": "Básico Ordinario",
+    "Observación": observacion || "Festivo no laborado",
+    "Tipo Observación": "DIA_FESTIVO_NO_LABORADO",
+    "Jornada Legal": JORNADA_LEGAL_HORAS + " horas",
+    "Jornada Incompleta": "No",
+    "Horario Distribución": "10am-7pm",
+    ...Object.fromEntries(slotLabels().map((lab, i) => [lab, round3(basicSlots[i] || 0)])),
+    "Total Horas": round3(totalHoras),
+    ...Object.fromEntries(slotLabels().map((lab, i) => ["vlr "+lab.replace("-","-"), 
+      fmtMoney((basicSlots[i] / totalHoras) * pagoBasicoInfo.pagoTotal || 0)])),
+    "Total por concepto": fmtMoney(pagoBasicoInfo.pagoTotal),
+    "Valor diario de seguridad social": fmtMoney(0),
+    "EPS": fmtMoney(pagoBasicoInfo.pagoTotal * ss.eps),
+    "AFP": fmtMoney(pagoBasicoInfo.pagoTotal * ss.afp),
+    "ARL": fmtMoney(pagoBasicoInfo.pagoTotal * ss.arl),
+    "CAJA": fmtMoney(pagoBasicoInfo.pagoTotal * ss.caja),
+    "Total Seguridad Social": fmtMoney(pagoBasicoInfo.pagoTotal * (ss.eps + ss.afp + ss.arl + ss.caja)),
+    "CESANTIAS": fmtMoney(pagoBasicoInfo.pagoTotal * prest.ces),
+    "PRIMAS": fmtMoney(pagoBasicoInfo.pagoTotal * prest.pri),
+    "INTERES": fmtMoney(pagoBasicoInfo.pagoTotal * prest.inte),
+    "VACACIONES": fmtMoney(pagoBasicoInfo.pagoTotal * prest.vac),
+    "Total Prestaciones Sociales": fmtMoney(pagoBasicoInfo.pagoTotal * (prest.ces + prest.pri + prest.inte + prest.vac)),
+    "Total": fmtMoney(pagoBasicoInfo.pagoTotal * (1 + (ss.eps + ss.afp + ss.arl + ss.caja) + (prest.ces + prest.pri + prest.inte + prest.vac))),
+    "Valor Comisión": fmtMoney(0),
+    "Valor Total": fmtMoney(pagoBasicoInfo.pagoTotal * (1 + (ss.eps + ss.afp + ss.arl + ss.caja) + (prest.ces + prest.pri + prest.inte + prest.vac))),
+    "Observaciones": "Festivo no laborado - Básico completo distribuido 10am-7pm | " + auxilioInfo.mensaje
+  });
+  
+  return rows;
+}
+
+// =========================
+// Función para procesar día especial
+// =========================
+function procesarDiaEspecial(params) {
+  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
+         comisionPct, ss, prest, salarioMinimo, esFestivo, tipoFestivo} = params;
+  
+  const totalHoras = rules.horasNormales;
+  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
+  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
+  
+  const nSlots = SLOT_END - SLOT_START;
+  let basicSlots, auxSlots;
+  
+  if (rules.horarioEspecial) {
+    basicSlots = distribuirHorasEnFranjasLaborales(nSlots, totalHoras, rules.inicioLaboral, rules.finLaboral);
+    auxSlots = [...basicSlots];
+  } else {
+    const horasPorFranja = totalHoras / nSlots;
+    basicSlots = Array(nSlots).fill(horasPorFranja);
+    auxSlots = Array(nSlots).fill(horasPorFranja);
+  }
+  
+  const auxilioInfo = calcularAuxilioTransporte(
+    parseFloat(salario || 0),
+    parseFloat(salarioMinimo || 0),
+    auxTrans * 30,
+    totalHoras,
+    esFestivo,
+    rules
+  );
+  
+  const rows = [];
+  
+  if (rules.pagoBasico && totalHoras > 0) {
+    rows.push(buildRowSpecial({
+      nombre, empresa, puesto, salario, valorHora, auxTrans: auxilioInfo.valor, 
+      d, dia, observacion, rules, comisionPct, ss, prest,
+      concepto: "Básico",
+      slotHours: basicSlots,
+      incluirAuxilio: false,
+      esBasico: true,
+      esFestivo: false,
+      pagoBasicoCalculado: pagoBasicoInfo,
+      auxilioInfo: auxilioInfo,
+      horarioEspecial: rules.horarioEspecial ? "10am-7pm" : "general",
+      tipoFestivoEspecial: tipoFestivo
+    }));
+  }
+  
+  if (rules.pagoAuxilio && auxilioInfo.valor > 0) {
+    rows.push(buildRowSpecial({
+      nombre, empresa, puesto, salario, valorHora, auxTrans: auxilioInfo.valor, 
+      d, dia, observacion, rules, comisionPct, ss, prest,
+      concepto: "Auxilio de Transporte",
+      slotHours: auxSlots,
+      incluirAuxilio: true,
+      esBasico: false,
+      esFestivo: false,
+      pagoBasicoCalculado: pagoBasicoInfo,
+      auxilioInfo: auxilioInfo,
+      horarioEspecial: rules.horarioEspecial ? "10am-7pm" : "general",
+      tipoFestivoEspecial: tipoFestivo
+    }));
+  }
+  
+  return rows;
+}
+
+// =========================
 // Cálculo por día -> filas por concepto
 // =========================
 function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,iniNoct,finNoct,factors,ss,prest,comisionPct,salarioMinimo}, day){
@@ -1113,316 +1578,6 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     }
   }
 
-  // Función auxiliar para construir filas especiales
-  function buildRowSpecial(params){
-    const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
-           comisionPct, ss, prest, concepto, slotHours, incluirAuxilio, esBasico, esFestivo, 
-           pagoBasicoCalculado, auxilioInfo, horarioEspecial, tipoFestivoEspecial} = params;
-    
-    const vh = parseFloat(valorHora||0);
-    const labels = slotLabels();
-    const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
-    let totalPorConcepto = 0;
-    const vlrSlots = [];
-
-    if (incluirAuxilio) {
-      for (let i = 0; i < slotHours.length; i++) {
-        const horasInSlot = slotHours[i];
-        if (totalHorasConcepto === 0) {
-          vlrSlots.push(0);
-        } else {
-          vlrSlots.push((horasInSlot / totalHorasConcepto) * auxTrans);
-        }
-      }
-      totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
-    } else if (esBasico) {
-      for (let i = 0; i < slotHours.length; i++) {
-        vlrSlots.push((slotHours[i] / totalHorasConcepto) * pagoBasicoCalculado.pagoTotal);
-      }
-      totalPorConcepto = vlrSlots.reduce((a,b)=>a+b,0);
-    }
-
-    const row = {};
-    row["Nombre completo"] = nombre;
-    row["Empresa"] = empresa;
-    row["Puesto"] = puesto;
-    row["Salario mensual"] = salario ? salario : "";
-    row["Valor Hora"] = vh;
-    row["Fecha"] = formatDateES(d);
-    row["Día"] = dia;
-    row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
-    // MEJORADO: Mostrar tipo de festivo claramente
-    if (tipoFestivoEspecial) {
-      row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivoEspecial);
-    } else if (esFestivo) {
-      row["Tipo Festivo"] = "FLSC (Sin especificar)";
-    }
-    row["Concepto"] = concepto;
-    row["Observación"] = observacion;
-    row["Tipo Observación"] = rules.tipo;
-    row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
-    row["Jornada Incompleta"] = pagoBasicoCalculado.esJornadaIncompleta ? "Sí" : "No";
-    if (horarioEspecial) {
-      row["Horario Distribución"] = horarioEspecial;
-    }
-
-    labels.forEach((lab,i) => row[lab] = round3(slotHours[i] || 0));
-    row["Total Horas"] = round3(totalHorasConcepto);
-
-    labels.forEach((lab,i) => row["vlr "+lab.replace("-","-")] = fmtMoney(vlrSlots[i] || 0));
-    row["Total por concepto"] = fmtMoney(totalPorConcepto);
-
-    const ibc = esBasico ? totalPorConcepto : 0;
-    
-    const calcSS = ss.enabled && esBasico ? {
-      valor_diario: 0,
-      eps: ibc * ss.eps,
-      afp: ibc * ss.afp,
-      arl: ibc * ss.arl,
-      caja: ibc * ss.caja
-    } : {valor_diario:0, eps:0, afp:0, arl:0, caja:0};
-
-    const totalSS = (calcSS.eps + calcSS.afp + calcSS.arl + calcSS.caja);
-
-    const calcPrest = prest.enabled && esBasico ? {
-      ces: ibc * prest.ces,
-      pri: ibc * prest.pri,
-      inte: ibc * prest.inte,
-      vac: ibc * prest.vac
-    } : {ces:0, pri:0, inte:0, vac:0};
-
-    const totalPrest = (calcPrest.ces + calcPrest.pri + calcPrest.inte + calcPrest.vac);
-
-    const total = totalPorConcepto + totalSS + totalPrest;
-    const valCom = total * comisionPct;
-    const valTotal = total + valCom;
-
-    row["Valor diario de seguridad social"] = fmtMoney(calcSS.valor_diario || 0);
-    row["EPS"] = fmtMoney(calcSS.eps || 0);
-    row["AFP"] = fmtMoney(calcSS.afp || 0);
-    row["ARL"] = fmtMoney(calcSS.arl || 0);
-    row["CAJA"] = fmtMoney(calcSS.caja || 0);
-    row["Total Seguridad Social"] = fmtMoney(totalSS);
-
-    row["CESANTIAS"] = fmtMoney(calcPrest.ces || 0);
-    row["PRIMAS"] = fmtMoney(calcPrest.pri || 0);
-    row["INTERES"] = fmtMoney(calcPrest.inte || 0);
-    row["VACACIONES"] = fmtMoney(calcPrest.vac || 0);
-    row["Total Prestaciones Sociales"] = fmtMoney(totalPrest);
-
-    row["Total"] = fmtMoney(total);
-    row["Valor Comisión"] = fmtMoney(valCom);
-    row["Valor Total"] = fmtMoney(valTotal);
-    
-    let observacionMsg = pagoBasicoCalculado.mensaje;
-    if (horarioEspecial === "10am-7pm") {
-      observacionMsg += " | Distribuido en horario 10am-7pm (9 franjas)";
-    }
-    if (tipoFestivoEspecial) {
-      const etiqueta = getEtiquetaFestivo(tipoFestivoEspecial);
-      observacionMsg += " | " + etiqueta;
-    }
-    if (auxilioInfo) {
-      observacionMsg += " | " + auxilioInfo.mensaje;
-    }
-    row["Observaciones"] = observacionMsg;
-
-    return row;
-  }
-
-  // Función para construir filas para días normales/festivos
-  function buildRow(concepto, slotHours, factorAdicional, esFestivoConcepto = false, tipoFestivoConcepto = null, esBasico = false){
-    const vh = parseFloat(valorHora||0);
-    const totalHorasConcepto = slotHours.reduce((a,b)=>a+b,0);
-    
-    if(totalHorasConcepto <= 0 && !esBasico) return null;
-    
-    let totalPorConcepto = 0;
-    const vlrSlots = [];
-
-    if(concepto === "Auxilio de Transporte"){
-      const vlrSlotsCalc = slotHours.map(hoursInSlot => {
-        if(totalHorasConcepto === 0) return 0;
-        return (hoursInSlot / totalHorasConcepto) * auxilioInfo.valor;
-      });
-      totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
-      
-      const row = {};
-      row["Nombre completo"]=nombre;
-      row["Empresa"]=empresa;
-      row["Puesto"]=puesto;
-      row["Salario mensual"]=salario? salario : "";
-      row["Valor Hora"]=vh;
-      row["Fecha"]=formatDateES(d);
-      row["Día"]=dia;
-      row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
-      // MEJORADO: Mostrar tipo de festivo
-      if (tipoFestivo) {
-        row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivo);
-      } else if (esFestivo) {
-        row["Tipo Festivo"] = "FLSC (Sin especificar)";
-      }
-      row["Concepto"]=concepto;
-      row["Observación"]=observacion;
-      row["Tipo Observación"]=rules.tipo;
-      row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
-      row["Jornada Incompleta"] = pagoBasicoInfo.esJornadaIncompleta ? "Sí" : "No";
-
-      labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
-      row["Total Horas"]=round3(totalHorasConcepto);
-
-      labels.forEach((lab,i)=> row["vlr "+lab.replace("-","-")]=fmtMoney(vlrSlotsCalc[i]||0));
-      row["Total por concepto"]=fmtMoney(totalPorConcepto);
-
-      row["Valor diario de seguridad social"]=0;
-      row["EPS"]=0;
-      row["AFP"]=0;
-      row["ARL"]=0;
-      row["CAJA"]=0;
-      row["Total Seguridad Social"]=0;
-
-      row["CESANTIAS"]=0;
-      row["PRIMAS"]=0;
-      row["INTERES"]=0;
-      row["VACACIONES"]=0;
-      row["Total Prestaciones Sociales"]=0;
-
-      row["Total"]=fmtMoney(totalPorConcepto);
-      row["Valor Comisión"]=fmtMoney(totalPorConcepto * comisionPct);
-      row["Valor Total"]=fmtMoney(totalPorConcepto + (totalPorConcepto * comisionPct));
-      
-      let obsText = auxilioInfo.mensaje;
-      if (esFestivoConcepto) {
-        obsText += " | Festivo";
-        if (tipoFestivoConcepto === "FESTIVO_NO_COMPENSADO") {
-          obsText += " (FLSC - Sin compensar)";
-        } else if (tipoFestivoConcepto === "FESTIVO_COMPENSADO") {
-          obsText += " (FLC - Compensado)";
-        }
-      }
-      row["Observaciones"] = obsText;
-
-      return row;
-    }
-
-    if (esBasico) {
-      const valorHoraUsar = pagoBasicoInfo.esJornadaIncompleta ? 
-        pagoBasicoInfo.valorHoraEfectivo : vh;
-      
-      const vlrSlotsCalc = slotHours.map(h=>{
-        if(h<=0) return 0;
-        return h * valorHoraUsar * factorAdicional;
-      });
-      totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
-    } else {
-      const vlrSlotsCalc = slotHours.map(h=>{
-        if(h<=0) return 0;
-        return h * vh * factorAdicional;
-      });
-      totalPorConcepto = vlrSlotsCalc.reduce((a,b)=>a+b,0);
-    }
-
-    const aplicaIBC = esBasico;
-    const ibc = aplicaIBC ? totalPorConcepto : 0;
-
-    const calcSS = ss.enabled && aplicaIBC ? {
-      valor_diario: 0,
-      eps: ibc * ss.eps,
-      afp: ibc * ss.afp,
-      arl: ibc * ss.arl,
-      caja: ibc * ss.caja
-    } : {valor_diario:0,eps:0,afp:0,arl:0,caja:0};
-
-    const totalSS = (calcSS.eps+calcSS.afp+calcSS.arl+calcSS.caja);
-
-    const calcPrest = prest.enabled && aplicaIBC ? {
-      ces: ibc * prest.ces,
-      pri: ibc * prest.pri,
-      inte: ibc * prest.inte,
-      vac: ibc * prest.vac
-    } : {ces:0,pri:0,inte:0,vac:0};
-
-    const totalPrest = (calcPrest.ces+calcPrest.pri+calcPrest.inte+calcPrest.vac);
-
-    const total = totalPorConcepto + totalSS + totalPrest;
-    const valCom = total * comisionPct;
-    const valTotal = total + valCom;
-
-    const row = {};
-    row["Nombre completo"]=nombre;
-    row["Empresa"]=empresa;
-    row["Puesto"]=puesto;
-    row["Salario mensual"]=salario? salario : "";
-    row["Valor Hora"]=vh;
-    row["Fecha"]=formatDateES(d);
-    row["Día"]=dia;
-    row["Es Festivo"] = esFestivo ? "Sí 🎉" : "No";
-    // MEJORADO: Mostrar tipo de festivo
-    if (tipoFestivo) {
-      row["Tipo Festivo"] = getEtiquetaFestivo(tipoFestivo);
-    } else if (esFestivo) {
-      row["Tipo Festivo"] = "FLSC (Sin especificar)";
-    }
-    row["Concepto"]=concepto;
-    row["Observación"]=observacion;
-    row["Tipo Observación"]=rules.tipo;
-    row["Jornada Legal"] = JORNADA_LEGAL_HORAS + " horas";
-    row["Jornada Incompleta"] = pagoBasicoInfo.esJornadaIncompleta ? "Sí" : "No";
-
-    labels.forEach((lab,i)=> row[lab]=round3(slotHours[i]||0));
-    row["Total Horas"]=round3(totalHorasConcepto);
-
-    labels.forEach((lab,i)=> {
-      if (esBasico && pagoBasicoInfo.esJornadaIncompleta) {
-        row["vlr "+lab.replace("-","-")] = fmtMoney(slotHours[i] * pagoBasicoInfo.valorHoraEfectivo || 0);
-      } else {
-        row["vlr "+lab.replace("-","-")] = fmtMoney(slotHours[i] * vh * factorAdicional || 0);
-      }
-    });
-    row["Total por concepto"]=fmtMoney(totalPorConcepto);
-
-    row["Valor diario de seguridad social"]=fmtMoney(calcSS.valor_diario||0);
-    row["EPS"]=fmtMoney(calcSS.eps||0);
-    row["AFP"]=fmtMoney(calcSS.afp||0);
-    row["ARL"]=fmtMoney(calcSS.arl||0);
-    row["CAJA"]=fmtMoney(calcSS.caja||0);
-    row["Total Seguridad Social"]=fmtMoney(totalSS);
-
-    row["CESANTIAS"]=fmtMoney(calcPrest.ces||0);
-    row["PRIMAS"]=fmtMoney(calcPrest.pri||0);
-    row["INTERES"]=fmtMoney(calcPrest.inte||0);
-    row["VACACIONES"]=fmtMoney(calcPrest.vac||0);
-    row["Total Prestaciones Sociales"]=fmtMoney(totalPrest);
-
-    row["Total"]=fmtMoney(total);
-    row["Valor Comisión"]=fmtMoney(valCom);
-    row["Valor Total"]=fmtMoney(valTotal);
-    
-    let obsText = "";
-    if (esBasico && pagoBasicoInfo.esJornadaIncompleta) {
-      obsText = "Jornada incompleta: salario completo (valor hora efectivo: " + 
-               fmtCOP(pagoBasicoInfo.valorHoraEfectivo) + ")";
-    } else if (esBasico) {
-      obsText = "Básico por contrato (220 horas mensuales)";
-    }
-    
-    if (esFestivoConcepto && !esBasico) {
-      const nombreFestivo = getNombreFestivo(d);
-      obsText += (obsText ? " | " : "") + "Recargo festivo";
-      if (nombreFestivo) obsText += ": " + nombreFestivo;
-      if (tipoFestivoConcepto === "FESTIVO_NO_COMPENSADO") {
-        obsText += " (FLSC - Sin compensar, 1.80 adicional)";
-      } else if (tipoFestivoConcepto === "FESTIVO_COMPENSADO") {
-        obsText += " (FLC - Compensado, 0.80 adicional)";
-      }
-    }
-    
-    if (!obsText) obsText = "Concepto ordinario";
-    row["Observaciones"] = obsText;
-
-    return row;
-  }
-
   // Si hay observación pero no es una regla especial que ya procesamos
   if (observacion && rules.tipo !== "NORMAL") {
     return [];
@@ -1435,28 +1590,68 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
   // 3. SIEMPRE AGREGAR BÁSICO (CONTRATO 220 HORAS)
   // ============================================
   if(rules.pagoBasico) {
-    if(!esFestivo) {
-      rows.push(buildRow("Básico Ordinario", basicSlots, 1.0, false, null, true));
-    } else {
-      rows.push(buildRow("Básico Ordinario", basicSlots, 1.0, true, tipoFestivo, true));
-    }
+    rows.push(buildRow({
+      nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+      comisionPct, ss, prest,
+      concepto: "Básico Ordinario", 
+      slotHours: basicSlots, 
+      factorAdicional: 1.0, 
+      esFestivoConcepto: esFestivo, 
+      tipoFestivoConcepto: tipoFestivo,
+      esBasico: true,
+      pagoBasicoInfo,
+      auxilioInfo
+    }));
   }
   
   if(!esFestivo){
     // DÍA ORDINARIO (no festivo)
     if(sumArr(noctRecSlots)>0) {
       const factorNocturno = factors.noct;
-      rows.push(buildRow("Recargo Nocturno Ordinario", noctRecSlots, factorNocturno, false));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Recargo Nocturno Ordinario", 
+        slotHours: noctRecSlots, 
+        factorAdicional: factorNocturno, 
+        esFestivoConcepto: false,
+        tipoFestivoConcepto: null,
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     if(sumArr(exdSlots)>0) {
       const factorExd = factors.exd;
-      rows.push(buildRow("Hora Extra Diurna Ordinaria", exdSlots, factorExd, false));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Hora Extra Diurna Ordinaria", 
+        slotHours: exdSlots, 
+        factorAdicional: factorExd, 
+        esFestivoConcepto: false,
+        tipoFestivoConcepto: null,
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     if(sumArr(exnSlots)>0) {
       const factorExn = factors.exn;
-      rows.push(buildRow("Hora Extra Nocturna Ordinaria", exnSlots, factorExn, false));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Hora Extra Nocturna Ordinaria", 
+        slotHours: exnSlots, 
+        factorAdicional: factorExn, 
+        esFestivoConcepto: false,
+        tipoFestivoConcepto: null,
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
   } else {
@@ -1466,190 +1661,124 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     // Recargo Festivo Compensado Diurno (FLC) - 0.80 adicional
     if(!esNoCompensado && sumArr(flcDiurnoSlots)>0) {
       const factorFlcD = factors.flc_d;
-      rows.push(buildRow("Recargo Festivo Diurno (FLC)", flcDiurnoSlots, factorFlcD, true, "FESTIVO_COMPENSADO"));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Recargo Festivo Diurno (FLC)", 
+        slotHours: flcDiurnoSlots, 
+        factorAdicional: factorFlcD, 
+        esFestivoConcepto: true,
+        tipoFestivoConcepto: "FESTIVO_COMPENSADO",
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     // Recargo Festivo Compensado Nocturno (FLC) - 1.10 adicional
     if(!esNoCompensado && sumArr(flcNoctSlots)>0) {
       const factorFlcN = factors.flc_n;
-      rows.push(buildRow("Recargo Festivo Nocturno (FLC)", flcNoctSlots, factorFlcN, true, "FESTIVO_COMPENSADO"));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Recargo Festivo Nocturno (FLC)", 
+        slotHours: flcNoctSlots, 
+        factorAdicional: factorFlcN, 
+        esFestivoConcepto: true,
+        tipoFestivoConcepto: "FESTIVO_COMPENSADO",
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     // Recargo Festivo Sin Compensar Diurno (FLSC) - 1.80 adicional
     if(esNoCompensado && sumArr(flscDiurnoSlots)>0) {
       const factorFlscD = factors.flsc_d;
-      rows.push(buildRow("Recargo Festivo Diurno (FLSC)", flscDiurnoSlots, factorFlscD, true, "FESTIVO_NO_COMPENSADO"));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Recargo Festivo Diurno (FLSC)", 
+        slotHours: flscDiurnoSlots, 
+        factorAdicional: factorFlscD, 
+        esFestivoConcepto: true,
+        tipoFestivoConcepto: "FESTIVO_NO_COMPENSADO",
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     // Recargo Festivo Sin Compensar Nocturno (FLSC) - 2.10 adicional
     if(esNoCompensado && sumArr(flscNoctSlots)>0) {
       const factorFlscN = factors.flsc_n;
-      rows.push(buildRow("Recargo Festivo Nocturno (FLSC)", flscNoctSlots, factorFlscN, true, "FESTIVO_NO_COMPENSADO"));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Recargo Festivo Nocturno (FLSC)", 
+        slotHours: flscNoctSlots, 
+        factorAdicional: factorFlscN, 
+        esFestivoConcepto: true,
+        tipoFestivoConcepto: "FESTIVO_NO_COMPENSADO",
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     // Extra en Festivo Diurno (+1.00 adicional al recargo festivo)
     if(sumArr(festExdSlots)>0) {
       const factorTotal = factors.fest_exd;
-      rows.push(buildRow("Extra en Festivo Diurno", festExdSlots, factorTotal, true, tipoFestivo));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Extra en Festivo Diurno", 
+        slotHours: festExdSlots, 
+        factorAdicional: factorTotal, 
+        esFestivoConcepto: true,
+        tipoFestivoConcepto: tipoFestivo,
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
     
     // Extra en Festivo Nocturno (+1.00 adicional al recargo festivo)
     if(sumArr(festExnSlots)>0) {
       const factorTotal = factors.fest_exn;
-      rows.push(buildRow("Extra en Festivo Nocturno", festExnSlots, factorTotal, true, tipoFestivo));
+      rows.push(buildRow({
+        nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+        comisionPct, ss, prest,
+        concepto: "Extra en Festivo Nocturno", 
+        slotHours: festExnSlots, 
+        factorAdicional: factorTotal, 
+        esFestivoConcepto: true,
+        tipoFestivoConcepto: tipoFestivo,
+        esBasico: false,
+        pagoBasicoInfo,
+        auxilioInfo
+      }));
     }
   }
   
   // AUXILIO DE TRANSPORTE (si corresponde)
   if(auxilioInfo.valor > 0 && sumArr(auxSlots) > 0) {
-    rows.push(buildRow("Auxilio de Transporte", auxSlots, 0, esFestivo, tipoFestivo));
-  }
-
-  return rows;
-}
-
-// =========================
-// NUEVO: Función para procesar día festivo NO laborado
-// =========================
-function procesarDiaFestivoNoLaborado(params) {
-  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, 
-         comisionPct, ss, prest, salarioMinimo, tipoFestivo, esFestivo} = params;
-  
-  const totalHoras = JORNADA_LEGAL_HORAS;
-  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
-  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
-  
-  const nSlots = SLOT_END - SLOT_START;
-  const basicSlots = distribuirHorasEnFranjasLaborales(nSlots, totalHoras, 10, 19);
-  
-  const auxilioInfo = calcularAuxilioTransporte(
-    parseFloat(salario || 0),
-    parseFloat(salarioMinimo || 0),
-    auxTrans * 30,
-    0, // No trabajó horas
-    true,
-    null
-  );
-  
-  const rows = [];
-  
-  // Básico completo
-  rows.push({
-    nombre, empresa, puesto,
-    "Salario mensual": salario ? salario : "",
-    "Valor Hora": valorHora,
-    "Fecha": formatDateES(d),
-    "Día": dia,
-    "Es Festivo": "Sí 🎉",
-    "Tipo Festivo": tipoFestivo ? getEtiquetaFestivo(tipoFestivo) : "FLSC (No laborado)",
-    "Concepto": "Básico Ordinario",
-    "Observación": observacion || "Festivo no laborado",
-    "Tipo Observación": "DIA_FESTIVO_NO_LABORADO",
-    "Jornada Legal": JORNADA_LEGAL_HORAS + " horas",
-    "Jornada Incompleta": "No",
-    "Horario Distribución": "10am-7pm",
-    ...Object.fromEntries(slotLabels().map((lab, i) => [lab, round3(basicSlots[i] || 0)])),
-    "Total Horas": round3(totalHoras),
-    ...Object.fromEntries(slotLabels().map((lab, i) => ["vlr "+lab.replace("-","-"), 
-      fmtMoney((basicSlots[i] / totalHoras) * pagoBasicoInfo.pagoTotal || 0)])),
-    "Total por concepto": fmtMoney(pagoBasicoInfo.pagoTotal),
-    "Valor diario de seguridad social": fmtMoney(0),
-    "EPS": fmtMoney(pagoBasicoInfo.pagoTotal * ss.eps),
-    "AFP": fmtMoney(pagoBasicoInfo.pagoTotal * ss.afp),
-    "ARL": fmtMoney(pagoBasicoInfo.pagoTotal * ss.arl),
-    "CAJA": fmtMoney(pagoBasicoInfo.pagoTotal * ss.caja),
-    "Total Seguridad Social": fmtMoney(pagoBasicoInfo.pagoTotal * (ss.eps + ss.afp + ss.arl + ss.caja)),
-    "CESANTIAS": fmtMoney(pagoBasicoInfo.pagoTotal * prest.ces),
-    "PRIMAS": fmtMoney(pagoBasicoInfo.pagoTotal * prest.pri),
-    "INTERES": fmtMoney(pagoBasicoInfo.pagoTotal * prest.inte),
-    "VACACIONES": fmtMoney(pagoBasicoInfo.pagoTotal * prest.vac),
-    "Total Prestaciones Sociales": fmtMoney(pagoBasicoInfo.pagoTotal * (prest.ces + prest.pri + prest.inte + prest.vac)),
-    "Total": fmtMoney(pagoBasicoInfo.pagoTotal * (1 + (ss.eps + ss.afp + ss.arl + ss.caja) + (prest.ces + prest.pri + prest.inte + prest.vac))),
-    "Valor Comisión": fmtMoney(0),
-    "Valor Total": fmtMoney(pagoBasicoInfo.pagoTotal * (1 + (ss.eps + ss.afp + ss.arl + ss.caja) + (prest.ces + prest.pri + prest.inte + prest.vac))),
-    "Observaciones": "Festivo no laborado - Básico completo distribuido 10am-7pm | " + auxilioInfo.mensaje
-  });
-  
-  return rows;
-}
-
-// =========================
-// Función para procesar día especial
-// =========================
-function procesarDiaEspecial(params) {
-  const {nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules, 
-         comisionPct, ss, prest, salarioMinimo, esFestivo, tipoFestivo} = params;
-  
-  const totalHoras = rules.horasNormales;
-  const salarioDiario = valorHora * JORNADA_LEGAL_HORAS;
-  const pagoBasicoInfo = calcularPagoBasico(totalHoras, valorHora, salarioDiario);
-  
-  const nSlots = SLOT_END - SLOT_START;
-  let basicSlots, auxSlots;
-  
-  if (rules.horarioEspecial) {
-    basicSlots = distribuirHorasEnFranjasLaborales(nSlots, totalHoras, rules.inicioLaboral, rules.finLaboral);
-    auxSlots = [...basicSlots];
-  } else {
-    const horasPorFranja = totalHoras / nSlots;
-    basicSlots = Array(nSlots).fill(horasPorFranja);
-    auxSlots = Array(nSlots).fill(horasPorFranja);
-  }
-  
-  const auxilioInfo = calcularAuxilioTransporte(
-    parseFloat(salario || 0),
-    parseFloat(salarioMinimo || 0),
-    auxTrans * 30,
-    totalHoras,
-    esFestivo,
-    rules
-  );
-  
-  const rows = [];
-  
-  if (rules.pagoBasico && totalHoras > 0) {
-    rows.push(buildRowSpecial({
-      nombre, empresa, puesto, salario, valorHora, auxTrans: auxilioInfo.valor, 
-      d, dia, observacion, rules, comisionPct, ss, prest,
-      concepto: "Básico",
-      slotHours: basicSlots,
-      incluirAuxilio: false,
-      esBasico: true,
-      esFestivo: false,
-      pagoBasicoCalculado: pagoBasicoInfo,
-      auxilioInfo: auxilioInfo,
-      horarioEspecial: rules.horarioEspecial ? "10am-7pm" : "general",
-      tipoFestivoEspecial: tipoFestivo
-    }));
-  }
-  
-  if (rules.pagoAuxilio && auxilioInfo.valor > 0) {
-    rows.push(buildRowSpecial({
-      nombre, empresa, puesto, salario, valorHora, auxTrans: auxilioInfo.valor, 
-      d, dia, observacion, rules, comisionPct, ss, prest,
-      concepto: "Auxilio de Transporte",
-      slotHours: auxSlots,
-      incluirAuxilio: true,
+    rows.push(buildRow({
+      nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
+      comisionPct, ss, prest,
+      concepto: "Auxilio de Transporte", 
+      slotHours: auxSlots, 
+      factorAdicional: 0, 
+      esFestivoConcepto: esFestivo, 
+      tipoFestivoConcepto: tipoFestivo,
       esBasico: false,
-      esFestivo: false,
-      pagoBasicoCalculado: pagoBasicoInfo,
-      auxilioInfo: auxilioInfo,
-      horarioEspecial: rules.horarioEspecial ? "10am-7pm" : "general",
-      tipoFestivoEspecial: tipoFestivo
+      pagoBasicoInfo,
+      auxilioInfo
     }));
   }
-  
-  return rows;
-}
 
-function sumArr(a){ return a.reduce((x,y)=>x+y,0); }
-function round3(n){ return Math.round(n*1000)/1000; }
-function fmtMoney(n){ return Math.round(n); }
-function formatDateES(d){
-  const dd = String(d.getDate()).padStart(2,"0");
-  const mm = String(d.getMonth()+1).padStart(2,"0");
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  // Filtrar filas nulas
+  return rows.filter(row => row !== null);
 }
 
 // =========================
@@ -1918,3 +2047,4 @@ console.log("   - Ejemplo: 'DOMINGO FLSC' o 'FESTIVO FLC'");
 </script>
 </body>
 </html>
+
