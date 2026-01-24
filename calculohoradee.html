@@ -337,7 +337,7 @@
       <br><span class="warn">• FLSC (Festivo Laborado Sin Compensar):</span> 1.80 adicional - <b>No se da día libre</b>
       <br><b>Compensatorios:</b> 7.33h distribuidas de 10am a 7pm (9 franjas).
       <br><b>Básico siempre:</b> Aparece el concepto "Básico" aunque trabaje solo nocturno o festivo.
-      <br><b>Auxilio transporte:</b> Por día laborado, no por horas. Completo si trabaja cualquier hora.
+      <br><b>Auxilio transporte:</b> Por día laborado, no por horas. Completo si trabaje cualquier hora.
     </div>
   </div>
 </div>
@@ -1710,12 +1710,11 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     // Recargo festivo diurno
     if (sumArr(distribucionFestivo.diurnas) > 0) {
       const factor = esNoCompensado ? factors.flsc_d : factors.flc_d;
-      const concepto = esNoCompensado ? "Recargo Festivo Diurno (FLSC)" : "Recargo Festivo Diurno (FLC)";
       
       rows.push(buildRow({
         nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
         comisionPct, ss, prest,
-        concepto: concepto, 
+        concepto: "Recargo Festivo Diurno", // NOMBRE SIMPLE SIN PARÉNTESIS
         slotHours: distribucionFestivo.diurnas, 
         factorAdicional: factor, 
         esFestivoConcepto: true,
@@ -1729,12 +1728,11 @@ function calcDayRows({nombre,empresa,puesto,salario,valorHora,auxTrans,jornada,i
     // Recargo festivo nocturno
     if (sumArr(distribucionFestivo.nocturnas) > 0) {
       const factor = esNoCompensado ? factors.flsc_n : factors.flc_n;
-      const concepto = esNoCompensado ? "Recargo Festivo Nocturno (FLSC)" : "Recargo Festivo Nocturno (FLC)";
       
       rows.push(buildRow({
         nombre, empresa, puesto, salario, valorHora, auxTrans, d, dia, observacion, rules,
         comisionPct, ss, prest,
-        concepto: concepto, 
+        concepto: "Recargo Festivo Nocturno", // NOMBRE SIMPLE SIN PARÉNTESIS
         slotHours: distribucionFestivo.nocturnas, 
         factorAdicional: factor, 
         esFestivoConcepto: true,
@@ -2030,12 +2028,10 @@ document.getElementById("btnCalc").onclick = ()=>{
       "Recargo Nocturno Ordinario": 3,
       "Hora Extra Diurna Ordinaria": 4,
       "Hora Extra Nocturna Ordinaria": 5,
-      "Recargo Festivo Diurno (FLC)": 6,
-      "Recargo Festivo Nocturno (FLC)": 7,
-      "Recargo Festivo Diurno (FLSC)": 8,
-      "Recargo Festivo Nocturno (FLSC)": 9,
-      "Extra en Festivo Diurno": 10,
-      "Extra en Festivo Nocturno": 11
+      "Recargo Festivo Diurno": 6,
+      "Recargo Festivo Nocturno": 7,
+      "Extra en Festivo Diurno": 8,
+      "Extra en Festivo Nocturno": 9
     };
     const ordenA = ordenConcepto[a["Concepto"]] || 99;
     const ordenB = ordenConcepto[b["Concepto"]] || 99;
